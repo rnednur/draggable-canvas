@@ -600,7 +600,7 @@ export function LiveWebsiteCard({
             <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
           </div>
-          <span className="text-xs text-gray-600 truncate flex-1 cursor-pointer hover:text-blue-600" onClick={openUrl}>
+          <span className="text-xs text-gray-600 truncate flex-1">
             {title}
           </span>
           <Button
@@ -663,7 +663,7 @@ export function WebsitePreview({ url, title }: { url: string; title: string }) {
             <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
             <div className="w-2 h-2 bg-green-400 rounded-full"></div>
           </div>
-          <span className="text-xs text-gray-600 truncate flex-1 cursor-pointer hover:text-blue-600" onClick={openUrl}>
+          <span className="text-xs text-gray-600 truncate flex-1">
             {title}
           </span>
           <Button

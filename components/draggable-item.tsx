@@ -43,6 +43,16 @@ export function DraggableItem({
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 })
   const itemRef = useRef<HTMLDivElement>(null)
 
+  // Sync position when initial props change (needed for auto-layout)
+  useEffect(() => {
+    setPosition({ x: initialX, y: initialY })
+  }, [initialX, initialY])
+
+  // Sync size when initial props change (needed for resizing from parent)
+  useEffect(() => {
+    setSize({ width: initialWidth, height: initialHeight })
+  }, [initialWidth, initialHeight])
+
   const handleMouseDown = (e: React.MouseEvent) => {
     // Don't start dragging if disabled or clicking on the delete button or resize handle
     if (disabled || 

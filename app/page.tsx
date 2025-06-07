@@ -22,6 +22,11 @@ import { Tooltip } from "@/components/ui/tooltip"
 import { ComponentRegistry } from "@/lib/component-registry"
 import { UNIVERSAL_COMPONENTS } from "@/components/universal-components"
 
+// Register built-in universal components immediately
+Object.entries(UNIVERSAL_COMPONENTS).forEach(([type, componentConfig]) => {
+  ComponentRegistry.register(type, componentConfig)
+})
+
 // Enhanced CanvasItem interface to support universal components
 interface CanvasItem {
   id: string
@@ -39,6 +44,9 @@ interface CanvasItem {
   // New fields for universal components
   universalType?: string
   props?: any
+  // Additional fields for preserving chart types and note colors
+  chartType?: string
+  noteColor?: string
 }
 
 // Enhanced CanvasConfig interface
@@ -98,14 +106,6 @@ function DynamicCanvas({
   editable = true,
   onItemsChange 
 }: DynamicCanvasProps) {
-  // Initialize universal components on first load
-  useEffect(() => {
-    // Register built-in universal components
-    Object.entries(UNIVERSAL_COMPONENTS).forEach(([type, componentConfig]) => {
-      ComponentRegistry.register(type, componentConfig)
-    })
-  }, [])
-
   const [items, setItems] = useState<CanvasItem[]>(() => {
     const initialItems: CanvasItem[] = []
     let idCounter = 1
@@ -132,6 +132,7 @@ function DynamicCanvas({
         type: 'chart',
         title: chartConfig.title,
         chartData: chartConfig.data,
+        chartType: chartConfig.type,
         x: chartConfig.x || Math.random() * 300 + 100,
         y: chartConfig.y || Math.random() * 300 + 100,
         width: chartConfig.width || 350,
@@ -147,6 +148,7 @@ function DynamicCanvas({
         type: 'note',
         title: noteConfig.title,
         content: noteConfig.content,
+        noteColor: noteConfig.color || 'yellow',
         x: noteConfig.x || Math.random() * 300 + 100,
         y: noteConfig.y || Math.random() * 300 + 100,
         width: noteConfig.width || 300,
@@ -208,6 +210,12 @@ function DynamicCanvas({
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [turnstileMode, setTurnstileMode] = useState(false)
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
+  // Carousel mode state
+  const [carouselMode, setCarouselMode] = useState(false)
+  const [carouselIndex, setCarouselIndex] = useState(0)
+  // State for zoom/scale
+  const [canvasScale, setCanvasScale] = useState(1)
+  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 })
 
   // Save current state to history
   const saveToHistory = (newItems: CanvasItem[]) => {
@@ -245,7 +253,7 @@ function DynamicCanvas({
         y: item.y
       })),
       charts: items.filter(item => item.type === 'chart').map(item => ({
-        type: 'bar', // You'd need to store the actual chart type
+        type: item.chartType || 'bar', // Use stored chart type
         title: item.title!,
         data: item.chartData,
         width: item.width,
@@ -256,7 +264,7 @@ function DynamicCanvas({
       notes: items.filter(item => item.type === 'note').map(item => ({
         title: item.title!,
         content: item.content!,
-        color: 'yellow', // You'd need to store the actual color
+        color: item.noteColor || 'yellow', // Use stored note color
         width: item.width,
         height: item.height,
         x: item.x,
@@ -447,32 +455,39 @@ function DynamicCanvas({
         setItems(newItems)
         saveToHistory(newItems)
         setSelectedItems(new Set())
+      } else if (carouselMode && e.key === 'ArrowRight') {
+        e.preventDefault()
+        nextCarouselItem()
+      } else if (carouselMode && e.key === 'ArrowLeft') {
+        e.preventDefault()
+        prevCarouselItem()
+      } else if (isCtrlOrCmd && e.key === 'f') {
+        e.preventDefault()
+        autoFitCanvas()
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [editable, historyIndex, history, selectedItems, items])
+  }, [editable, historyIndex, history, selectedItems, items, carouselMode])
 
   // Helper function to create chart components
   function createChartComponent(type: string, title: string, data: any, width: number, height: number) {
-    const style = { width, height: height - 60 } // Account for header
-    
     switch (type) {
       case 'bar':
         return (
-          <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden" style={{ width, height }}>
-            <div className="p-3 border-b bg-blue-50">
+          <div className="w-full h-full bg-white border-2 border-gray-200 rounded-lg overflow-hidden flex flex-col">
+            <div className="p-3 border-b bg-blue-50 flex-shrink-0">
               <h3 className="font-semibold text-gray-800">{title}</h3>
             </div>
-            <div className="p-4 flex items-end space-x-2" style={style}>
+            <div className="p-4 flex items-end space-x-2 flex-1 min-h-0">
               {data?.values?.map((value: number, index: number) => (
-                <div key={index} className="flex flex-col items-center">
+                <div key={index} className="flex flex-col items-center flex-1">
                   <div 
-                    className="bg-blue-500 rounded-t w-8" 
+                    className="bg-blue-500 rounded-t w-full max-w-8" 
                     style={{ height: `${(value / Math.max(...data.values)) * 80}%` }}
                   ></div>
-                  <span className="text-xs mt-1">{data.labels?.[index] || index}</span>
+                  <span className="text-xs mt-1 truncate">{data.labels?.[index] || index}</span>
                 </div>
               ))}
             </div>
@@ -480,12 +495,12 @@ function DynamicCanvas({
         )
       case 'line':
         return (
-          <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden" style={{ width, height }}>
-            <div className="p-3 border-b bg-green-50">
+          <div className="w-full h-full bg-white border-2 border-gray-200 rounded-lg overflow-hidden flex flex-col">
+            <div className="p-3 border-b bg-green-50 flex-shrink-0">
               <h3 className="font-semibold text-gray-800">{title}</h3>
             </div>
-            <div className="p-4 relative" style={style}>
-              <svg width="100%" height="100%" className="overflow-visible">
+            <div className="p-4 relative flex-1 min-h-0">
+              <svg className="w-full h-full overflow-visible">
                 <polyline
                   fill="none"
                   stroke="#10b981"
@@ -504,9 +519,9 @@ function DynamicCanvas({
                   />
                 ))}
               </svg>
-              <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs">
+              <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs px-4">
                 {data?.labels?.map((label: string, index: number) => (
-                  <span key={index}>{label}</span>
+                  <span key={index} className="truncate">{label}</span>
                 ))}
               </div>
             </div>
@@ -522,12 +537,12 @@ function DynamicCanvas({
         const innerRadius = type === 'donut' ? 20 : 0
         
         return (
-          <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden" style={{ width, height }}>
-            <div className="p-3 border-b bg-purple-50">
+          <div className="w-full h-full bg-white border-2 border-gray-200 rounded-lg overflow-hidden flex flex-col">
+            <div className="p-3 border-b bg-purple-50 flex-shrink-0">
               <h3 className="font-semibold text-gray-800">{title}</h3>
             </div>
-            <div className="p-4 flex items-center justify-center" style={style}>
-              <svg width="200" height="200" viewBox="0 0 100 100">
+            <div className="p-4 flex items-center justify-center flex-1 min-h-0">
+              <svg className="w-full h-full min-w-[100px] min-h-[100px]" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                 {data?.values?.map((value: number, index: number) => {
                   const angle = (value / total) * 360
                   const startAngle = currentAngle
@@ -576,23 +591,25 @@ function DynamicCanvas({
         )
       case 'metrics':
         return (
-          <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden" style={{ width, height }}>
-            <div className="p-3 border-b bg-green-50">
+          <div className="w-full h-full bg-white border-2 border-gray-200 rounded-lg overflow-hidden flex flex-col">
+            <div className="p-3 border-b bg-green-50 flex-shrink-0">
               <h3 className="font-semibold text-gray-800">{title}</h3>
             </div>
-            <div className="p-4 grid grid-cols-2 gap-4" style={style}>
-              {data?.metrics?.map((metric: any, index: number) => (
-                <div key={index} className="text-center p-2 bg-gray-50 rounded">
-                  <p className="text-lg font-bold text-blue-600">{metric.value}</p>
-                  <p className="text-xs text-gray-600">{metric.label}</p>
-                </div>
-              ))}
+            <div className="p-2 flex-1 min-h-0">
+              <div className="grid grid-cols-2 gap-2 h-full">
+                {data?.metrics?.map((metric: any, index: number) => (
+                  <div key={index} className="text-center p-2 bg-gray-50 rounded flex flex-col justify-center min-h-[60px]">
+                    <p className="font-bold text-blue-600 truncate text-sm sm:text-lg">{metric.value}</p>
+                    <p className="text-gray-600 truncate text-xs">{metric.label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )
       default:
         return (
-          <div className="bg-white border-2 border-gray-200 rounded-lg p-4 flex items-center justify-center" style={{ width, height }}>
+          <div className="w-full h-full bg-white border-2 border-gray-200 rounded-lg p-4 flex items-center justify-center">
             <div className="text-center">
               <div className="text-4xl mb-2">📊</div>
               <p className="font-semibold">{title}</p>
@@ -614,9 +631,9 @@ function DynamicCanvas({
     }
 
     return (
-      <div className={`border-2 rounded-lg p-4 ${colorClasses[color as keyof typeof colorClasses] || colorClasses.yellow}`} style={{ width, height }}>
-        <h3 className="font-semibold text-gray-800 mb-2">{title}</h3>
-        <div className="text-sm text-gray-700 overflow-y-auto" style={{ height: height - 80 }}>
+      <div className={`w-full h-full border-2 rounded-lg p-4 flex flex-col ${colorClasses[color as keyof typeof colorClasses] || colorClasses.yellow}`}>
+        <h3 className="font-semibold text-gray-800 mb-2 flex-shrink-0">{title}</h3>
+        <div className="text-sm text-gray-700 overflow-y-auto flex-1 whitespace-pre-wrap">
           {content}
         </div>
       </div>
@@ -630,7 +647,40 @@ function DynamicCanvas({
   }
 
   const handleSizeChange = (id: string, width: number, height: number) => {
-    const newItems = items.map((item) => (item.id === id ? { ...item, width, height } : item))
+    const newItems = items.map((item) => {
+      if (item.id === id) {
+        const updatedItem = { ...item, width, height }
+        
+        // Recreate components that need to respond to size changes
+        if (item.type === 'chart') {
+          updatedItem.component = createChartComponent(
+            item.chartType || 'bar', // Use stored chart type
+            item.title || 'Chart',
+            item.chartData,
+            width,
+            height
+          )
+        } else if (item.type === 'note') {
+          updatedItem.component = createNoteComponent(
+            item.title || 'Note',
+            item.content || '',
+            item.noteColor || 'yellow', // Use stored note color
+            width,
+            height
+          )
+        } else if (item.type === 'url') {
+          updatedItem.component = <LiveWebsiteCard 
+            url={item.url!} 
+            title={item.title!} 
+            width={width} 
+            height={height} 
+          />
+        }
+        
+        return updatedItem
+      }
+      return item
+    })
     setItems(newItems)
     onItemsChange?.(newItems)
   }
@@ -644,11 +694,15 @@ function DynamicCanvas({
 
   // Calculate turnstile positions
   const calculateTurnstilePosition = (index: number, total: number, focused: boolean, isFocused: boolean) => {
+    // Fallback for SSR
+    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
+    const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+
     if (isFocused && focused) {
       // Focused item goes to center
       return {
-        x: window.innerWidth / 2 - 200, // Center horizontally (assuming 400px width)
-        y: window.innerHeight / 2 - 150, // Center vertically (assuming 300px height)
+        x: screenWidth / 2 - 200, // Center horizontally (assuming 400px width)
+        y: screenHeight / 2 - 150, // Center vertically (assuming 300px height)
         scale: 1.1,
         zIndex: 100,
         opacity: 1
@@ -656,9 +710,9 @@ function DynamicCanvas({
     }
 
     // Arrange other items in a circle around the center
-    const centerX = window.innerWidth / 2
-    const centerY = window.innerHeight / 2
-    const radius = Math.min(window.innerWidth, window.innerHeight) * 0.3
+    const centerX = screenWidth / 2
+    const centerY = screenHeight / 2
+    const radius = Math.min(screenWidth, screenHeight) * 0.3
     const angle = (index / total) * 2 * Math.PI
     
     return {
@@ -674,6 +728,7 @@ function DynamicCanvas({
   const toggleTurnstileMode = () => {
     setTurnstileMode(!turnstileMode)
     setFocusedItemId(null)
+    setCarouselMode(false) // Disable carousel when enabling turnstile
   }
 
   // Focus on a specific item in turnstile mode
@@ -683,13 +738,240 @@ function DynamicCanvas({
     }
   }
 
+  // Calculate carousel positions
+  const calculateCarouselPosition = (index: number, total: number, currentIndex: number) => {
+    // Fallback for SSR
+    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
+    const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+    
+    const centerX = screenWidth / 2
+    const centerY = screenHeight / 2
+    const itemWidth = 400
+    const itemHeight = 300
+    const spacing = itemWidth + 50 // Space between items
+
+    if (index === currentIndex) {
+      // Current item in center
+      return {
+        x: centerX - itemWidth / 2,
+        y: centerY - itemHeight / 2,
+        scale: 1,
+        opacity: 1,
+        zIndex: 100
+      }
+    } else {
+      // Other items positioned to the sides
+      const offset = (index - currentIndex) * spacing
+      return {
+        x: centerX - itemWidth / 2 + offset,
+        y: centerY - itemHeight / 2,
+        scale: 0.8,
+        opacity: Math.abs(index - currentIndex) === 1 ? 0.7 : 0.3, // Adjacent items more visible
+        zIndex: Math.abs(index - currentIndex) === 1 ? 50 : 10
+      }
+    }
+  }
+
+  // Toggle carousel mode
+  const toggleCarouselMode = () => {
+    setCarouselMode(!carouselMode)
+    setCarouselIndex(0)
+    setTurnstileMode(false) // Disable turnstile when enabling carousel
+  }
+
+  // Navigate carousel
+  const nextCarouselItem = () => {
+    if (carouselMode && items.length > 0) {
+      setCarouselIndex((prev) => (prev + 1) % items.length)
+    }
+  }
+
+  const prevCarouselItem = () => {
+    if (carouselMode && items.length > 0) {
+      setCarouselIndex((prev) => (prev - 1 + items.length) % items.length)
+    }
+  }
+
+  // Go to specific carousel item
+  const goToCarouselItem = (index: number) => {
+    if (carouselMode) {
+      setCarouselIndex(index)
+    }
+  }
+
+  // Calculate canvas bounds to fit all items
+  const calculateCanvasBounds = () => {
+    if (items.length === 0) {
+      // Fallback dimensions for SSR
+      const fallbackWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
+      const fallbackHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+      return { 
+        minX: 0, 
+        minY: 0, 
+        maxX: fallbackWidth, 
+        maxY: fallbackHeight,
+        width: fallbackWidth,
+        height: fallbackHeight
+      }
+    }
+
+    const padding = 100 // Extra space around items
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+
+    items.forEach(item => {
+      minX = Math.min(minX, item.x - padding)
+      minY = Math.min(minY, item.y - padding)
+      maxX = Math.max(maxX, item.x + item.width + padding)
+      maxY = Math.max(maxY, item.y + item.height + padding)
+    })
+
+    // Ensure minimum canvas size with SSR fallbacks
+    const minWidth = typeof window !== 'undefined' ? window.innerWidth : 1200
+    const minHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+    
+    return {
+      minX: Math.min(minX, 0),
+      minY: Math.min(minY, 0),
+      maxX: Math.max(maxX, minWidth),
+      maxY: Math.max(maxY, minHeight),
+      width: Math.max(maxX - Math.min(minX, 0), minWidth),
+      height: Math.max(maxY - Math.min(minY, 0), minHeight)
+    }
+  }
+
+  // Auto-fit: scale and position to show all components in viewport
+  const autoFitCanvas = () => {
+    if (typeof window === 'undefined' || items.length === 0) return
+
+    const bounds = calculateCanvasBounds()
+    const container = document.querySelector('.canvas-container') as HTMLElement
+    
+    if (container) {
+      // Get viewport dimensions (subtract some padding for better visual)
+      const viewportPadding = 100
+      const viewportWidth = window.innerWidth - viewportPadding
+      const viewportHeight = window.innerHeight - viewportPadding
+      
+      // Calculate the content dimensions
+      const contentWidth = bounds.width
+      const contentHeight = bounds.height
+      
+      // Calculate scale factors for both dimensions
+      const scaleX = viewportWidth / contentWidth
+      const scaleY = viewportHeight / contentHeight
+      
+      // Use the smaller scale to ensure everything fits
+      const optimalScale = Math.min(scaleX, scaleY, 1) // Don't scale up beyond 100%
+      
+      // Calculate the center position for the scaled content
+      const scaledContentWidth = contentWidth * optimalScale
+      const scaledContentHeight = contentHeight * optimalScale
+      
+      const offsetX = (viewportWidth - scaledContentWidth) / 2
+      const offsetY = (viewportHeight - scaledContentHeight) / 2
+      
+      // Apply the scale and offset
+      setCanvasScale(optimalScale)
+      setCanvasOffset({ x: offsetX, y: offsetY })
+      
+      // Reset scroll to top-left since we're using transform
+      container.scrollTo({
+        left: 0,
+        top: 0,
+        behavior: 'smooth'
+      })
+    }
+  }
+
+  // Reset zoom to 100%
+  const resetZoom = () => {
+    setCanvasScale(1)
+    setCanvasOffset({ x: 0, y: 0 })
+  }
+
+  // Focus on a specific item (scroll to it)
+  const focusOnComponent = (itemId: string) => {
+    if (typeof window === 'undefined') return
+    
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    // Reset zoom first
+    resetZoom()
+
+    const container = document.querySelector('.canvas-container') as HTMLElement
+    if (container) {
+      const centerX = item.x + (item.width / 2) - (window.innerWidth / 2)
+      const centerY = item.y + (item.height / 2) - (window.innerHeight / 2)
+      
+      container.scrollTo({
+        left: Math.max(0, centerX),
+        top: Math.max(0, centerY),
+        behavior: 'smooth'
+      })
+    }
+  }
+
+  // Auto-layout: Arrange all items in a structured grid
+  const autoLayoutItems = () => {
+    if (items.length === 0) return
+
+    // Disable special modes first
+    setTurnstileMode(false)
+    setCarouselMode(false)
+    setFocusedItemId(null)
+
+    const padding = 50 // Space between items
+    const startX = 100 // Starting X position
+    const startY = 100 // Starting Y position
+    
+    // Calculate optimal grid dimensions
+    const totalItems = items.length
+    const cols = Math.ceil(Math.sqrt(totalItems * 1.5)) // Slightly wider than square
+    const rows = Math.ceil(totalItems / cols)
+    
+    // Find the largest item dimensions to use as base grid size
+    const maxWidth = Math.max(...items.map(item => item.width))
+    const maxHeight = Math.max(...items.map(item => item.height))
+    
+    // Calculate grid spacing
+    const gridWidth = maxWidth + padding
+    const gridHeight = maxHeight + padding
+    
+    // Sort items by size (largest first) for better arrangement
+    const sortedItems = [...items].sort((a, b) => (b.width * b.height) - (a.width * a.height))
+    
+    const newItems = sortedItems.map((item, index) => {
+      const col = index % cols
+      const row = Math.floor(index / cols)
+      
+      const newX = startX + (col * gridWidth)
+      const newY = startY + (row * gridHeight)
+      
+      return {
+        ...item,
+        x: newX,
+        y: newY
+      }
+    })
+    
+    setItems(newItems)
+    saveToHistory(newItems)
+    onItemsChange?.(newItems)
+    
+    // Auto-fit to show the newly arranged items
+    setTimeout(() => {
+      autoFitCanvas()
+    }, 200)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {editable && (
         <>
           {/* Toolbar */}
-          <div className="fixed top-4 left-4 z-50 bg-white rounded-lg shadow-lg p-2 flex gap-2">
-            <Tooltip content="💾 Save Canvas - Saves your current layout to browser storage" shortcut="Ctrl+S" side="bottom">
+          <div className="fixed top-1/2 right-4 z-50 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2 transform -translate-y-1/2">
+            <Tooltip content="💾 Save Canvas - Saves your current layout to browser storage" shortcut="Ctrl+S" side="left">
               <Button
                 onClick={saveCanvas}
                 size="sm"
@@ -701,7 +983,7 @@ function DynamicCanvas({
               </Button>
             </Tooltip>
             
-            <Tooltip content="📁 Load Canvas - Restores your previously saved layout" side="bottom">
+            <Tooltip content="📁 Load Canvas - Restores your previously saved layout" side="left">
               <Button
                 onClick={loadCanvas}
                 size="sm"
@@ -713,7 +995,7 @@ function DynamicCanvas({
               </Button>
             </Tooltip>
             
-            <Tooltip content="↶ Undo - Reverts the last action" shortcut="Ctrl+Z" side="bottom">
+            <Tooltip content="↶ Undo - Reverts the last action" shortcut="Ctrl+Z" side="left">
               <Button
                 onClick={undo}
                 size="sm"
@@ -726,7 +1008,7 @@ function DynamicCanvas({
               </Button>
             </Tooltip>
             
-            <Tooltip content="↷ Redo - Restores the last undone action" shortcut="Ctrl+Y" side="bottom">
+            <Tooltip content="↷ Redo - Restores the last undone action" shortcut="Ctrl+Y" side="left">
               <Button
                 onClick={redo}
                 size="sm"
@@ -739,7 +1021,7 @@ function DynamicCanvas({
               </Button>
             </Tooltip>
             
-            <Tooltip content="🎠 Turnstile Mode - Circular layout for overlapping cards" side="bottom">
+            <Tooltip content="🎠 Turnstile Mode - Circular layout for overlapping cards" side="left">
               <Button
                 onClick={toggleTurnstileMode}
                 size="sm"
@@ -751,7 +1033,55 @@ function DynamicCanvas({
               </Button>
             </Tooltip>
             
-            <Tooltip content="📤 Export Configuration - Downloads your canvas setup as JSON" side="bottom">
+            <Tooltip content="🎢 Carousel Mode - Linear navigation through items" side="left">
+              <Button
+                onClick={toggleCarouselMode}
+                size="sm"
+                variant={carouselMode ? "default" : "outline"}
+                className={`transition-colors ${carouselMode ? 'bg-pink-100 hover:bg-pink-200' : 'hover:bg-pink-50'}`}
+                title="🎢 Carousel Mode"
+              >
+                🎢
+              </Button>
+            </Tooltip>
+            
+            <Tooltip content="🎯 Auto-Fit - Center view to show all components" shortcut="Ctrl+F" side="left">
+              <Button
+                onClick={autoFitCanvas}
+                size="sm"
+                variant="outline"
+                className="hover:bg-indigo-50 transition-colors"
+                title="🎯 Auto-Fit Canvas (Ctrl+F)"
+              >
+                🎯
+              </Button>
+            </Tooltip>
+            
+            <Tooltip content="🔍 Reset Zoom - Return to 100% zoom level" side="left">
+              <Button
+                onClick={resetZoom}
+                size="sm"
+                variant="outline"
+                className="hover:bg-cyan-50 transition-colors"
+                title="🔍 Reset Zoom"
+              >
+                🔍
+              </Button>
+            </Tooltip>
+            
+            <Tooltip content="🧩 Auto-Layout - Arrange all items in a structured grid" side="left">
+              <Button
+                onClick={autoLayoutItems}
+                size="sm"
+                variant="outline"
+                className="hover:bg-purple-50 transition-colors"
+                title="🧩 Auto-Layout Grid"
+              >
+                🧩
+              </Button>
+            </Tooltip>
+            
+            <Tooltip content="📤 Export Configuration - Downloads your canvas setup as JSON" side="left">
               <Button
                 onClick={exportConfig}
                 size="sm"
@@ -763,7 +1093,7 @@ function DynamicCanvas({
               </Button>
             </Tooltip>
             
-            <Tooltip content="🗑️ Clear Canvas - Removes all items (with confirmation)" side="bottom">
+            <Tooltip content="🗑️ Clear Canvas - Removes all items (with confirmation)" side="left">
               <Button
                 onClick={clearCanvas}
                 size="sm"
@@ -797,6 +1127,12 @@ function DynamicCanvas({
                   <li>• Hover over items to see controls</li>
                   <li>• 🎠 Turnstile mode for overlapping cards</li>
                   <li>• Click cards in turnstile to focus</li>
+                  <li>• 🎢 Carousel mode for linear navigation</li>
+                  <li>• Arrow keys to navigate in carousel</li>
+                  <li>• 🎯 Auto-fit zooms to show all components</li>
+                  <li>• 🔍 Reset zoom to return to 100%</li>
+                  <li>• 🧩 Auto-layout to arrange in grid</li>
+                  <li>• Scroll to navigate large canvases</li>
                   <li>• Ctrl+S to save, Ctrl+Z to undo</li>
                   <li>• Delete key to remove selected items</li>
                   <li>• Pass config prop for data-driven content</li>
@@ -808,71 +1144,150 @@ function DynamicCanvas({
       )}
 
       {/* Canvas */}
-      <div className="relative w-full h-screen overflow-hidden">
-        {/* Grid background */}
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: "20px 20px",
+      <div className="relative w-full h-screen overflow-auto canvas-container" style={{
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#cbd5e1 #f1f5f9'
+      }}>
+        {/* Dynamic canvas size based on item positions */}
+        <div 
+          className="relative" 
+          style={{ 
+            width: `${calculateCanvasBounds().width}px`,
+            height: `${calculateCanvasBounds().height}px`,
+            minWidth: '100vw',
+            minHeight: '100vh',
+            transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
+            transformOrigin: 'top left',
+            transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
           }}
-        />
+        >
+          {/* Grid background */}
+          <div
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: "20px 20px",
+            }}
+          />
 
-        {/* Draggable Items */}
-        {items.map((item, index) => {
-          const turnstilePos = turnstileMode 
-            ? calculateTurnstilePosition(index, items.length, focusedItemId !== null, item.id === focusedItemId)
-            : null
+          {/* Draggable Items */}
+          {items.map((item, index) => {
+            const turnstilePos = turnstileMode 
+              ? calculateTurnstilePosition(index, items.length, focusedItemId !== null, item.id === focusedItemId)
+              : null
 
-          return (
-            <DraggableItem
-              key={item.id}
-              id={item.id}
-              initialX={turnstileMode ? turnstilePos!.x : item.x}
-              initialY={turnstileMode ? turnstilePos!.y : item.y}
-              initialWidth={item.width}
-              initialHeight={item.height}
-              onPositionChange={turnstileMode ? () => {} : handlePositionChange}
-              onSizeChange={turnstileMode ? () => {} : handleSizeChange}
-              onDelete={editable && !turnstileMode ? deleteItem : undefined}
-              resizable={!turnstileMode}
-              style={{
-                transform: turnstileMode ? `scale(${turnstilePos!.scale})` : 'scale(1)',
-                opacity: turnstileMode ? turnstilePos!.opacity : 1,
-                zIndex: turnstileMode ? turnstilePos!.zIndex : 'auto',
-                transition: turnstileMode ? 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
-                cursor: turnstileMode ? 'pointer' : 'move'
-              }}
-              onClick={turnstileMode ? () => focusOnItem(item.id) : undefined}
-              disabled={turnstileMode}
-            >
-              {item.component}
-            </DraggableItem>
-          )
-        })}
+            const carouselPos = carouselMode
+              ? calculateCarouselPosition(index, items.length, carouselIndex)
+              : null
 
-        {/* Turnstile Mode Overlay */}
-        {turnstileMode && (
-          <div className="absolute inset-0 bg-black bg-opacity-20 pointer-events-none z-5">
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center pointer-events-none">
-              {focusedItemId ? (
-                <div className="bg-black bg-opacity-50 rounded-lg p-4">
-                  <p className="text-lg font-semibold">Focused Mode</p>
-                  <p className="text-sm opacity-75">Click the focused item again to unfocus</p>
-                </div>
-              ) : (
-                <div className="bg-black bg-opacity-50 rounded-lg p-4">
-                  <p className="text-lg font-semibold">🎠 Turnstile Mode</p>
-                  <p className="text-sm opacity-75">Click any card to focus on it</p>
-                  <p className="text-xs opacity-50 mt-2">Items are arranged in a circle • Drag and resize disabled</p>
-                </div>
-              )}
+            const isInSpecialMode = turnstileMode || carouselMode
+
+            return (
+              <DraggableItem
+                key={item.id}
+                id={item.id}
+                initialX={carouselMode ? carouselPos!.x : (turnstileMode ? turnstilePos!.x : item.x)}
+                initialY={carouselMode ? carouselPos!.y : (turnstileMode ? turnstilePos!.y : item.y)}
+                initialWidth={item.width}
+                initialHeight={item.height}
+                onPositionChange={isInSpecialMode ? () => {} : handlePositionChange}
+                onSizeChange={isInSpecialMode ? () => {} : handleSizeChange}
+                onDelete={editable && !isInSpecialMode ? deleteItem : undefined}
+                resizable={!isInSpecialMode}
+                style={{
+                  transform: carouselMode ? `scale(${carouselPos!.scale})` : (turnstileMode ? `scale(${turnstilePos!.scale})` : 'scale(1)'),
+                  opacity: carouselMode ? carouselPos!.opacity : (turnstileMode ? turnstilePos!.opacity : 1),
+                  zIndex: carouselMode ? carouselPos!.zIndex : (turnstileMode ? turnstilePos!.zIndex : 'auto'),
+                  transition: isInSpecialMode ? 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+                  cursor: isInSpecialMode ? 'pointer' : 'move'
+                }}
+                onClick={turnstileMode ? () => focusOnItem(item.id) : (carouselMode ? () => goToCarouselItem(index) : undefined)}
+                disabled={isInSpecialMode}
+              >
+                {item.component}
+              </DraggableItem>
+            )
+          })}
+
+          {/* Turnstile Mode Overlay */}
+          {turnstileMode && (
+            <div className="absolute inset-0 bg-black bg-opacity-20 pointer-events-none z-5">
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center pointer-events-none">
+                {focusedItemId ? (
+                  <div className="bg-black bg-opacity-50 rounded-lg p-4">
+                    <p className="text-lg font-semibold">Focused Mode</p>
+                    <p className="text-sm opacity-75">Click the focused item again to unfocus</p>
+                  </div>
+                ) : (
+                  <div className="bg-black bg-opacity-50 rounded-lg p-4">
+                    <p className="text-lg font-semibold">🎠 Turnstile Mode</p>
+                    <p className="text-sm opacity-75">Click any card to focus on it</p>
+                    <p className="text-xs opacity-50 mt-2">Items are arranged in a circle • Drag and resize disabled</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Carousel Mode Overlay */}
+          {carouselMode && (
+            <div className="absolute inset-0 pointer-events-none z-5">
+              {/* Navigation Controls */}
+              <div className="absolute top-1/2 left-4 transform -translate-y-1/2 pointer-events-auto">
+                <Button
+                  onClick={prevCarouselItem}
+                  size="lg"
+                  variant="outline"
+                  className="bg-white/90 hover:bg-white text-gray-700 rounded-full w-12 h-12 shadow-lg"
+                  disabled={items.length === 0}
+                >
+                  ←
+                </Button>
+              </div>
+              
+              <div className="absolute top-1/2 right-4 transform -translate-y-1/2 pointer-events-auto">
+                <Button
+                  onClick={nextCarouselItem}
+                  size="lg"
+                  variant="outline"
+                  className="bg-white/90 hover:bg-white text-gray-700 rounded-full w-12 h-12 shadow-lg"
+                  disabled={items.length === 0}
+                >
+                  →
+                </Button>
+              </div>
+              
+              {/* Info Display */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white text-center">
+                <div className="bg-black bg-opacity-50 rounded-lg p-4">
+                  <p className="text-lg font-semibold">🎢 Carousel Mode</p>
+                  <p className="text-sm opacity-75">
+                    {items.length > 0 ? `${carouselIndex + 1} of ${items.length}` : 'No items'}
+                  </p>
+                  <p className="text-xs opacity-50 mt-2">Use arrow keys or click navigation buttons • Click items to jump</p>
+                  
+                  {/* Dot Indicator */}
+                  {items.length > 1 && (
+                    <div className="flex justify-center mt-3 space-x-1">
+                      {items.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => goToCarouselItem(index)}
+                          className={`w-2 h-2 rounded-full transition-colors pointer-events-auto ${
+                            index === carouselIndex ? 'bg-white' : 'bg-white/40'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
