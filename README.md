@@ -4,9 +4,7 @@ A powerful, data-driven canvas component for creating interactive dashboards wit
 
 ## 🎨 Visual Showcase
 
-### Main Dashboard View
-![Main Dashboard](images/main-dashboard.png)
-*The main canvas with various components: charts, notes, websites, and universal components all arranged on an infinite scrollable canvas.*
+
 
 ### Auto-Layout Feature
 ![Auto Layout](images/auto-layout.png)
@@ -24,9 +22,6 @@ A powerful, data-driven canvas component for creating interactive dashboards wit
 ![Carousel Mode](images/carousel-mode.png)
 *🎢 Carousel mode provides linear navigation through your components with smooth transitions.*
 
-### Interactive Features
-![Interactive Features](images/interactive-features.png)
-*Drag, resize, and delete components with intuitive controls. Live website embedding and editable components.*
 
 ## 🚀 Features
 
