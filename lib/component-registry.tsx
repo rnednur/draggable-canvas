@@ -203,21 +203,25 @@ class ComponentErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          <h3 className="font-semibold">Component Error</h3>
-          <p className="text-sm">
-            Failed to render component "{this.props.componentType}"
-          </p>
-          {this.state.error && (
-            <details className="mt-2 text-xs">
-              <summary>Error details</summary>
-              <pre className="mt-1 overflow-auto">
-                {this.state.error.message}
-              </pre>
-            </details>
-          )}
-        </div>
+      return React.createElement(
+        'div',
+        { className: 'bg-red-50 border border-red-200 rounded-lg p-4 text-red-700' },
+        React.createElement('h3', { className: 'font-semibold' }, 'Component Error'),
+        React.createElement(
+          'p',
+          { className: 'text-sm' },
+          `Failed to render component "${this.props.componentType}"`
+        ),
+        this.state.error && React.createElement(
+          'details',
+          { className: 'mt-2 text-xs' },
+          React.createElement('summary', null, 'Error details'),
+          React.createElement(
+            'pre',
+            { className: 'mt-1 overflow-auto' },
+            this.state.error.message
+          )
+        )
       )
     }
 
