@@ -2,6 +2,32 @@
 
 A powerful, data-driven canvas component for creating interactive dashboards with draggable, resizable components.
 
+## 🎨 Visual Showcase
+
+### Main Dashboard View
+![Main Dashboard](images/main-dashboard.png)
+*The main canvas with various components: charts, notes, websites, and universal components all arranged on an infinite scrollable canvas.*
+
+### Auto-Layout Feature
+![Auto Layout](images/auto-layout.png)
+*Click the 🧩 Auto-Layout button to instantly organize all components in a structured grid pattern.*
+
+### Auto-Fit Zoom
+![Auto Fit Zoom](images/auto-fit-zoom.png)
+*The 🎯 Auto-Fit feature automatically zooms to show all components in the viewport.*
+
+### Turnstile Mode
+![Turnstile Mode](images/turnstile-mode.png)
+*🎠 Turnstile mode arranges overlapping components in a circular pattern for easy navigation.*
+
+### Carousel Mode  
+![Carousel Mode](images/carousel-mode.png)
+*🎢 Carousel mode provides linear navigation through your components with smooth transitions.*
+
+### Interactive Features
+![Interactive Features](images/interactive-features.png)
+*Drag, resize, and delete components with intuitive controls. Live website embedding and editable components.*
+
 ## 🚀 Features
 
 ### Core Functionality
@@ -405,244 +431,3 @@ Embed live, interactive websites directly in your dashboard:
   height: 400
 }
 ```
-
-### Popular Embedding Examples
-
-```javascript
-// Google Analytics
-{
-  url: "https://analytics.google.com", 
-  title: "Analytics Dashboard",
-  width: 800,
-  height: 600
-}
-
-// GitHub Repository
-{
-  url: "https://github.com/your-username/your-repo",
-  title: "Project Repository", 
-  width: 700,
-  height: 500
-}
-
-// Monitoring Dashboard
-{
-  url: "https://your-monitoring-tool.com/dashboard",
-  title: "System Monitoring",
-  width: 900,
-  height: 600
-}
-```
-
-## 🎠 Turnstile Mode
-
-When your canvas gets crowded, use Turnstile Mode for better organization:
-
-### How to Use
-1. **Activate**: Click the 🎠 button in the toolbar
-2. **View**: All items arrange in a circle around the center
-3. **Focus**: Click any item to bring it to center and enlarge it
-4. **Navigate**: Click other items to switch focus
-5. **Exit**: Click 🎠 again to return to normal mode
-
-### When to Use Turnstile Mode
-- **Crowded Canvas**: Too many overlapping components
-- **Presentations**: Showcase components one at a time
-- **Review Sessions**: Systematically examine each component
-- **Organization**: Get overview of all components
-
-## 💾 Save & Export Options
-
-### Save to Browser Storage
-```javascript
-// Automatically saves when you click Save button
-// Data persists between browser sessions
-```
-
-### Export Configuration
-```javascript
-// Click Export button to download JSON file
-// Use this file to recreate the same dashboard later
-```
-
-### Programmatic Save
-```tsx
-const handleSave = (canvasItems) => {
-  // Save to your backend
-  fetch('/api/dashboard', {
-    method: 'POST',
-    body: JSON.stringify({ items: canvasItems })
-  })
-}
-
-<DynamicCanvas onItemsChange={handleSave} />
-```
-
-## 🎯 Common Use Cases & Examples
-
-### 1. Business Executive Dashboard
-
-```javascript
-const executiveDashboard = {
-  charts: [
-    {
-      type: "metrics",
-      title: "Key Performance Indicators", 
-      data: {
-        metrics: [
-          { label: "Monthly Revenue", value: "$2.4M" },
-          { label: "Customer Growth", value: "+12%" },
-          { label: "Market Share", value: "23%" },
-          { label: "Team Size", value: "85" }
-        ]
-      }
-    },
-    {
-      type: "line",
-      title: "Revenue Trend (12 months)",
-      data: {
-        values: [1.8, 2.1, 1.9, 2.3, 2.0, 2.4, 2.2, 2.6, 2.3, 2.7, 2.4, 2.4],
-        labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-      }
-    }
-  ],
-  urls: [
-    { url: "https://analytics.google.com", title: "Google Analytics" },
-    { url: "https://salesforce.com", title: "CRM Dashboard" }
-  ]
-}
-```
-
-### 2. Development Team Dashboard
-
-```javascript
-const devDashboard = {
-  charts: [
-    {
-      type: "bar",
-      title: "Sprint Velocity",
-      data: {
-        values: [23, 28, 31, 27, 35],
-        labels: ["Sprint 1", "Sprint 2", "Sprint 3", "Sprint 4", "Sprint 5"]
-      }
-    },
-    {
-      type: "pie", 
-      title: "Bug Distribution",
-      data: {
-        values: [15, 8, 12, 5],
-        labels: ["Frontend", "Backend", "Database", "DevOps"]
-      }
-    }
-  ],
-  urls: [
-    { url: "https://github.com/your-org/project", title: "GitHub Repository" },
-    { url: "https://your-ci-cd.com", title: "CI/CD Pipeline" }
-  ],
-  notes: [
-    {
-      title: "Sprint Goals",
-      content: "• Complete user authentication\n• Fix critical bugs\n• Deploy to staging",
-      color: "blue"
-    }
-  ]
-}
-```
-
-### 3. Marketing Campaign Dashboard
-
-```javascript
-const marketingDashboard = {
-  charts: [
-    {
-      type: "metrics",
-      title: "Campaign Performance",
-      data: {
-        metrics: [
-          { label: "Impressions", value: "1.2M" },
-          { label: "Clicks", value: "45.6K" },
-          { label: "Conversions", value: "2.3K" },
-          { label: "ROI", value: "245%" }
-        ]
-      }
-    },
-    {
-      type: "donut",
-      title: "Traffic Sources", 
-      data: {
-        values: [40, 25, 20, 15],
-        labels: ["Social Media", "Email", "Paid Ads", "Organic"]
-      }
-    }
-  ],
-  urls: [
-    { url: "https://facebook.com/insights", title: "Facebook Analytics" },
-    { url: "https://ads.google.com", title: "Google Ads" }
-  ]
-}
-```
-
-## 🔧 Advanced Customization
-
-### Custom Styling
-
-```tsx
-// Wrap the canvas with custom styling
-<div className="custom-dashboard">
-  <style jsx>{`
-    .custom-dashboard {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-    }
-  `}</style>
-  <DynamicCanvas config={myConfig} />
-</div>
-```
-
-### Event Handling
-
-```tsx
-function AdvancedDashboard() {
-  const handleItemSelect = (itemId) => {
-    console.log('Item selected:', itemId)
-  }
-  
-  const handleItemMove = (itemId, x, y) => {
-    console.log('Item moved:', itemId, 'to', x, y)
-  }
-  
-  return (
-    <DynamicCanvas
-      config={myConfig}
-      onItemSelect={handleItemSelect}
-      onItemMove={handleItemMove}
-    />
-  )
-}
-```
-
-## 🔧 Technical Details
-
-- **Framework**: Next.js 15.2.4 with React 19
-- **Styling**: Tailwind CSS with shadcn/ui components
-- **State Management**: React hooks with history tracking
-- **Persistence**: localStorage for save/load functionality
-- **Export**: JSON configuration download
-- **Charts**: Recharts library for data visualization
-- **TypeScript**: Full type safety throughout
-
-## 📈 Future Enhancements
-
-- [ ] Real-time collaboration
-- [ ] More chart libraries integration
-- [ ] Custom component plugins
-- [ ] Cloud save/sync
-- [ ] Template gallery
-- [ ] Mobile responsive design
-- [ ] Zoom and pan controls
-- [ ] Grid snapping
-- [ ] Multi-select operations
-
----
-
-Built with ❤️ using Next.js, React, and Tailwind CSS 
