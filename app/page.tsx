@@ -19,10 +19,13 @@ import { Input } from "@/components/ui/input"
 import { RotateCcw, Plus, Globe, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip } from "@/components/ui/tooltip"
+import { ComponentRegistry } from "@/lib/component-registry"
+import { UNIVERSAL_COMPONENTS } from "@/components/universal-components"
 
+// Enhanced CanvasItem interface to support universal components
 interface CanvasItem {
   id: string
-  type: 'url' | 'chart' | 'note' | 'component'
+  type: 'url' | 'chart' | 'note' | 'component' | 'universal'
   component?: React.ReactNode
   data?: any
   x: number
@@ -33,8 +36,12 @@ interface CanvasItem {
   content?: string
   url?: string
   chartData?: any
+  // New fields for universal components
+  universalType?: string
+  props?: any
 }
 
+// Enhanced CanvasConfig interface
 interface CanvasConfig {
   urls?: Array<{
     url: string
@@ -70,6 +77,14 @@ interface CanvasConfig {
     x?: number
     y?: number
   }>
+  // New: Universal components config
+  universal?: Record<string, Array<{
+    props?: any
+    width?: number
+    height?: number
+    x?: number
+    y?: number
+  }>>
 }
 
 interface DynamicCanvasProps {
@@ -83,6 +98,14 @@ function DynamicCanvas({
   editable = true,
   onItemsChange 
 }: DynamicCanvasProps) {
+  // Initialize universal components on first load
+  useEffect(() => {
+    // Register built-in universal components
+    Object.entries(UNIVERSAL_COMPONENTS).forEach(([type, componentConfig]) => {
+      ComponentRegistry.register(type, componentConfig)
+    })
+  }, [])
+
   const [items, setItems] = useState<CanvasItem[]>(() => {
     const initialItems: CanvasItem[] = []
     let idCounter = 1
@@ -132,6 +155,50 @@ function DynamicCanvas({
       })
     })
 
+    // Process legacy components from config
+    config.components?.forEach(componentConfig => {
+      initialItems.push({
+        id: `component-${idCounter++}`,
+        type: 'component',
+        data: componentConfig,
+        x: componentConfig.x || Math.random() * 300 + 100,
+        y: componentConfig.y || Math.random() * 300 + 100,
+        width: componentConfig.width || 300,
+        height: componentConfig.height || 200,
+        component: <div className="p-4 border rounded bg-gray-50">Legacy Component: {componentConfig.type}</div>
+      })
+    })
+
+    // Process universal components from config
+    if (config.universal) {
+      Object.entries(config.universal).forEach(([universalType, instances]) => {
+        instances.forEach(instanceConfig => {
+          const componentConfig = ComponentRegistry.get(universalType)
+          const defaultDimensions = componentConfig?.defaultDimensions || { width: 300, height: 200 }
+          
+          const component = ComponentRegistry.createComponent(
+            universalType,
+            instanceConfig.props || {},
+            `universal-${idCounter}`
+          )
+
+          if (component) {
+            initialItems.push({
+              id: `universal-${idCounter++}`,
+              type: 'universal',
+              universalType,
+              props: instanceConfig.props || {},
+              x: instanceConfig.x || Math.random() * 300 + 100,
+              y: instanceConfig.y || Math.random() * 300 + 100,
+              width: instanceConfig.width || defaultDimensions.width,
+              height: instanceConfig.height || defaultDimensions.height,
+              component
+            })
+          }
+        })
+      })
+    }
+
     return initialItems
   })
 
@@ -166,46 +233,9 @@ function DynamicCanvas({
     }
   }
 
-  // Save canvas to localStorage
-  const saveCanvas = () => {
-    const canvasData = {
-      items,
-      timestamp: Date.now(),
-      version: '1.0'
-    }
-    localStorage.setItem('canvas-layout', JSON.stringify(canvasData))
-    alert('Canvas saved successfully!')
-  }
-
-  // Load canvas from localStorage
-  const loadCanvas = () => {
-    try {
-      const saved = localStorage.getItem('canvas-layout')
-      if (saved) {
-        const { items: savedItems } = JSON.parse(saved)
-        setItems(savedItems)
-        saveToHistory(savedItems)
-        alert('Canvas loaded successfully!')
-      } else {
-        alert('No saved canvas found!')
-      }
-    } catch (error) {
-      alert('Error loading canvas!')
-    }
-  }
-
-  // Clear canvas
-  const clearCanvas = () => {
-    if (confirm('Are you sure you want to clear the canvas?')) {
-      const newItems: CanvasItem[] = []
-      setItems(newItems)
-      saveToHistory(newItems)
-    }
-  }
-
-  // Export canvas configuration
+  // Enhanced export canvas configuration
   const exportConfig = () => {
-    const config = {
+    const config: CanvasConfig = {
       urls: items.filter(item => item.type === 'url').map(item => ({
         url: item.url!,
         title: item.title!,
@@ -231,7 +261,39 @@ function DynamicCanvas({
         height: item.height,
         x: item.x,
         y: item.y
+      })),
+      components: items.filter(item => item.type === 'component').map(item => ({
+        type: item.data?.type || 'unknown',
+        props: item.data?.props || {},
+        width: item.width,
+        height: item.height,
+        x: item.x,
+        y: item.y
       }))
+    }
+
+    // Add universal components to export
+    const universalItems = items.filter(item => item.type === 'universal')
+    if (universalItems.length > 0) {
+      config.universal = {}
+      
+      universalItems.forEach(item => {
+        const type = item.universalType!
+        if (!config.universal![type]) {
+          config.universal![type] = []
+        }
+        
+        // Serialize props using the registry
+        const serializedProps = ComponentRegistry.serializeProps(type, item.props || {})
+        
+        config.universal![type].push({
+          props: serializedProps,
+          width: item.width,
+          height: item.height,
+          x: item.x,
+          y: item.y
+        })
+      })
     }
     
     const dataStr = JSON.stringify(config, null, 2)
@@ -241,6 +303,126 @@ function DynamicCanvas({
     link.href = url
     link.download = 'canvas-config.json'
     link.click()
+  }
+
+  // Enhanced save canvas to localStorage with universal component support
+  const saveCanvas = () => {
+    try {
+      // Convert items to serializable format
+      const serializableItems = items.map(item => {
+        if (item.type === 'universal') {
+          return {
+            ...item,
+            component: null, // Remove React component for serialization
+            props: ComponentRegistry.serializeProps(item.universalType!, item.props || {})
+          }
+        }
+        return {
+          ...item,
+          component: null // Remove React component for serialization
+        }
+      })
+
+      const canvasData = {
+        items: serializableItems,
+        timestamp: Date.now(),
+        version: '2.0' // Updated version for universal component support
+      }
+      
+      localStorage.setItem('canvas-layout', JSON.stringify(canvasData))
+      alert('Canvas saved successfully!')
+    } catch (error) {
+      console.error('Error saving canvas:', error)
+      alert('Error saving canvas!')
+    }
+  }
+
+  // Enhanced load canvas from localStorage with universal component support
+  const loadCanvas = () => {
+    try {
+      const saved = localStorage.getItem('canvas-layout')
+      if (saved) {
+        const { items: savedItems, version } = JSON.parse(saved)
+        
+        // Reconstruct components based on version
+        const reconstructedItems = savedItems.map((item: any) => {
+          if (item.type === 'universal' && item.universalType) {
+            // Deserialize props and recreate universal component
+            const deserializedProps = ComponentRegistry.deserializeProps(
+              item.universalType, 
+              item.props || {}
+            )
+            
+            const component = ComponentRegistry.createComponent(
+              item.universalType,
+              deserializedProps,
+              item.id
+            )
+            
+            return {
+              ...item,
+              props: deserializedProps,
+              component
+            }
+          } else if (item.type === 'chart') {
+            // Recreate chart component
+            return {
+              ...item,
+              component: createChartComponent(
+                'bar', // Default type - you might want to store this
+                item.title || 'Chart',
+                item.chartData,
+                item.width,
+                item.height
+              )
+            }
+          } else if (item.type === 'note') {
+            // Recreate note component
+            return {
+              ...item,
+              component: createNoteComponent(
+                item.title || 'Note',
+                item.content || '',
+                'yellow', // Default color - you might want to store this
+                item.width,
+                item.height
+              )
+            }
+          } else if (item.type === 'url') {
+            // Recreate URL component
+            return {
+              ...item,
+              component: <LiveWebsiteCard 
+                url={item.url} 
+                title={item.title} 
+                width={item.width} 
+                height={item.height} 
+              />
+            }
+          }
+          
+          return item
+        })
+        
+        setItems(reconstructedItems)
+        saveToHistory(reconstructedItems)
+        alert('Canvas loaded successfully!')
+      } else {
+        alert('No saved canvas found!')
+      }
+    } catch (error) {
+      console.error('Error loading canvas:', error)
+      alert('Error loading canvas!')
+    }
+  }
+
+  // Clear canvas
+  const clearCanvas = () => {
+    if (confirm('Are you sure you want to clear the canvas?')) {
+      const newItems: CanvasItem[] = []
+      setItems(newItems)
+      saveToHistory(newItems)
+    }
   }
 
   // Keyboard shortcuts
@@ -785,10 +967,10 @@ export default function CanvasDemo() {
     notes: [
       {
         title: 'Project Notes',
-        content: 'This is a sample note that can contain any text content. You can resize and move it around the canvas. Try the new features:\n\n• Save/Load (Ctrl+S)\n• Undo/Redo (Ctrl+Z/Y)\n• Export config\n• Multiple chart types',
+        content: 'This is a sample note that can contain any text content. You can resize and move it around the canvas. Try the new features:\n\n• Save/Load (Ctrl+S)\n• Undo/Redo (Ctrl+Z/Y)\n• Export config\n• Multiple chart types\n• Universal Components!',
         color: 'yellow',
         width: 300,
-        height: 250,
+        height: 280,
         x: 1500,
         y: 100
       },
@@ -800,20 +982,84 @@ export default function CanvasDemo() {
         height: 150,
         x: 1850,
         y: 200
-      },
-      {
-        title: 'Feature List',
-        content: '✅ Drag & Drop\n✅ Resize\n✅ Delete\n✅ Save/Load\n✅ Undo/Redo\n✅ Export\n✅ Multiple Charts\n✅ Keyboard Shortcuts',
-        color: 'green',
-        width: 250,
-        height: 200,
-        x: 1850,
-        y: 450
       }
-    ]
+    ],
+    // NEW: Universal Components Demo
+    universal: {
+      'todo-list': [
+        {
+          props: {
+            title: 'Sprint Tasks',
+            items: [
+              { id: '1', text: 'Complete universal component system', completed: true, createdAt: new Date() },
+              { id: '2', text: 'Update documentation', completed: false, createdAt: new Date() },
+              { id: '3', text: 'Add more example components', completed: false, createdAt: new Date() }
+            ],
+            maxItems: 10
+          },
+          x: 100,
+          y: 800,
+          width: 320,
+          height: 400
+        }
+      ],
+      'timer': [
+        {
+          props: {
+            title: 'Focus Timer',
+            initialMinutes: 25,
+            autoStart: false
+          },
+          x: 450,
+          y: 800,
+          width: 280,
+          height: 350
+        }
+      ],
+      'note': [
+        {
+          props: {
+            title: 'Universal Notes',
+            content: 'This is a universal note component!\n\nIt can be:\n• Edited inline\n• Styled with colors\n• Saved and loaded\n• Exported',
+            color: 'blue',
+            editable: true
+          },
+          x: 750,
+          y: 800,
+          width: 300,
+          height: 280
+        }
+      ],
+      'weather': [
+        {
+          props: {
+            city: 'San Francisco',
+            temperature: 68,
+            condition: 'Sunny',
+            humidity: 65
+          },
+          x: 1080,
+          y: 800,
+          width: 300,
+          height: 220
+        },
+        {
+          props: {
+            city: 'New York',
+            temperature: 45,
+            condition: 'Cloudy',
+            humidity: 78
+          },
+          x: 1400,
+          y: 800,
+          width: 300,
+          height: 220
+        }
+      ]
+    }
   }
 
-  return <DynamicCanvas config={sampleConfig} editable={true} />
+  return <DynamicCanvas config={sampleConfig} />
 }
 
 // Export DynamicCanvas as a named export for reuse
