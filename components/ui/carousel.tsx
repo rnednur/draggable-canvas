@@ -252,6 +252,44 @@ const CarouselNext = React.forwardRef<
 })
 CarouselNext.displayName = "CarouselNext"
 
+const CarouselThumbnail = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentProps<typeof Button> & {
+    isActive?: boolean
+    index: number
+    onClick: () => void
+  }
+>(({ className, isActive = false, index, onClick, children, ...props }, ref) => {
+  return (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="sm"
+      className={cn(
+        "relative h-16 w-20 p-1 rounded-lg border-2 transition-all duration-300 hover:scale-105",
+        isActive 
+          ? "border-primary shadow-lg scale-105" 
+          : "border-muted hover:border-border",
+        className
+      )}
+      onClick={onClick}
+      {...props}
+    >
+      <div className="w-full h-full rounded overflow-hidden bg-muted flex items-center justify-center">
+        {children || (
+          <span className="text-xs font-medium text-muted-foreground">
+            {index + 1}
+          </span>
+        )}
+      </div>
+      {isActive && (
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary rounded-full" />
+      )}
+    </Button>
+  )
+})
+CarouselThumbnail.displayName = "CarouselThumbnail"
+
 export {
   type CarouselApi,
   Carousel,
@@ -259,4 +297,5 @@ export {
   CarouselItem,
   CarouselPrevious,
   CarouselNext,
+  CarouselThumbnail,
 }

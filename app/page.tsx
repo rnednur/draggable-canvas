@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from 'react'
 import { DraggableItem } from "@/components/draggable-item"
 import {
   BlogPostCard,
@@ -21,6 +19,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip } from "@/components/ui/tooltip"
 import { ComponentRegistry } from "@/lib/component-registry"
 import { UNIVERSAL_COMPONENTS } from "@/components/universal-components"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, CarouselThumbnail, type CarouselApi } from "@/components/ui/carousel"
+import Autoplay from "embla-carousel-autoplay"
 
 // Register built-in universal components immediately
 Object.entries(UNIVERSAL_COMPONENTS).forEach(([type, componentConfig]) => {
@@ -60,7 +60,7 @@ interface CanvasConfig {
     y?: number
   }>
   charts?: Array<{
-    type: 'bar' | 'line' | 'pie' | 'metrics' | 'kpi'
+    type: 'bar' | 'line' | 'pie' | 'donut' | 'metrics' | 'kpi'
     title: string
     data: any
     width?: number
@@ -98,12 +98,14 @@ interface CanvasConfig {
 interface DynamicCanvasProps {
   config?: CanvasConfig
   editable?: boolean
+  showPalette?: boolean // New prop to control palette visibility
   onItemsChange?: (items: CanvasItem[]) => void
 }
 
 function DynamicCanvas({ 
   config = {}, 
   editable = true,
+  showPalette = true,
   onItemsChange 
 }: DynamicCanvasProps) {
   const [items, setItems] = useState<CanvasItem[]>(() => {
@@ -216,6 +218,16 @@ function DynamicCanvas({
   // State for zoom/scale
   const [canvasScale, setCanvasScale] = useState(1)
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 })
+  
+  // Enhanced carousel state
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>()
+  const [carouselAutoplay, setCarouselAutoplay] = useState(false)
+  const [carouselSpeed, setCarouselSpeed] = useState(3000)
+  const [carouselThumbnails, setCarouselThumbnails] = useState(true)
+  const [carouselTransition, setCarouselTransition] = useState<'slide' | 'fade' | 'scale'>('slide')
+
+  // Component palette state
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   // Save current state to history
   const saveToHistory = (newItems: CanvasItem[]) => {
@@ -253,7 +265,7 @@ function DynamicCanvas({
         y: item.y
       })),
       charts: items.filter(item => item.type === 'chart').map(item => ({
-        type: item.chartType || 'bar', // Use stored chart type
+        type: (item.chartType || 'bar') as 'bar' | 'line' | 'pie' | 'donut' | 'metrics' | 'kpi', // Type assertion
         title: item.title!,
         data: item.chartData,
         width: item.width,
@@ -433,43 +445,72 @@ function DynamicCanvas({
     }
   }
 
-  // Keyboard shortcuts
+  // Keyboard event handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!editable) return
-      
-      const isCtrlOrCmd = e.ctrlKey || e.metaKey
-      
-      if (isCtrlOrCmd && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault()
-        undo()
-      } else if (isCtrlOrCmd && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault()
-        redo()
-      } else if (isCtrlOrCmd && e.key === 's') {
+      // Don't trigger shortcuts if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      // Carousel Mode Shortcuts
+      if (carouselMode) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault()
+          prevCarouselItem()
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault()
+          nextCarouselItem()
+        } else if (e.key === ' ' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault()
+          toggleCarouselAutoplay()
+        } else if (e.key === 't' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault()
+          toggleCarouselThumbnails()
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          toggleCarouselMode()
+        }
+        // Number keys to jump to specific slides
+        else if (e.key >= '1' && e.key <= '9') {
+          const index = parseInt(e.key) - 1
+          if (index < items.length) {
+            e.preventDefault()
+            goToCarouselItem(index)
+          }
+        }
+        return
+      }
+
+      // Global shortcuts
+      if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault()
         saveCanvas()
-      } else if (e.key === 'Delete' && selectedItems.size > 0) {
+      } else if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
         e.preventDefault()
-        const newItems = items.filter(item => !selectedItems.has(item.id))
-        setItems(newItems)
-        saveToHistory(newItems)
-        setSelectedItems(new Set())
-      } else if (carouselMode && e.key === 'ArrowRight') {
+        undo()
+      } else if ((e.key === 'y' && (e.ctrlKey || e.metaKey)) || (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)) {
         e.preventDefault()
-        nextCarouselItem()
-      } else if (carouselMode && e.key === 'ArrowLeft') {
-        e.preventDefault()
-        prevCarouselItem()
-      } else if (isCtrlOrCmd && e.key === 'f') {
+        redo()
+      } else if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault()
         autoFitCanvas()
+      } else if (e.key === 'c' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        e.preventDefault()
+        toggleCarouselMode()
+      } else if (e.key === 't' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+        e.preventDefault()
+        toggleTurnstileMode()
+      } else if (e.key === 'Delete' && selectedItems.size > 0) {
+        e.preventDefault()
+        selectedItems.forEach(deleteItem)
+        setSelectedItems(new Set())
       }
     }
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [editable, historyIndex, history, selectedItems, items, carouselMode])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [carouselMode, carouselAutoplay, selectedItems, items.length])
 
   // Helper function to create chart components
   function createChartComponent(type: string, title: string, data: any, width: number, height: number) {
@@ -777,27 +818,85 @@ function DynamicCanvas({
     setCarouselMode(!carouselMode)
     setCarouselIndex(0)
     setTurnstileMode(false) // Disable turnstile when enabling carousel
+    
+    // If enabling carousel mode, setup the API after a brief delay
+    if (!carouselMode) {
+      setTimeout(() => {
+        if (carouselApi) {
+          carouselApi.scrollTo(0)
+        }
+      }, 100)
+    }
   }
 
-  // Navigate carousel
+  // Navigate carousel - Enhanced with Embla API
   const nextCarouselItem = () => {
     if (carouselMode && items.length > 0) {
-      setCarouselIndex((prev) => (prev + 1) % items.length)
+      if (carouselApi) {
+        carouselApi.scrollNext()
+      } else {
+        // Fallback to custom logic
+        setCarouselIndex((prev) => (prev + 1) % items.length)
+      }
     }
   }
 
   const prevCarouselItem = () => {
     if (carouselMode && items.length > 0) {
-      setCarouselIndex((prev) => (prev - 1 + items.length) % items.length)
+      if (carouselApi) {
+        carouselApi.scrollPrev()
+      } else {
+        // Fallback to custom logic  
+        setCarouselIndex((prev) => (prev - 1 + items.length) % items.length)
+      }
     }
   }
 
-  // Go to specific carousel item
+  // Go to specific carousel item - Enhanced
   const goToCarouselItem = (index: number) => {
     if (carouselMode) {
-      setCarouselIndex(index)
+      if (carouselApi) {
+        carouselApi.scrollTo(index)
+      } else {
+        setCarouselIndex(index)
+      }
     }
   }
+
+  // New: Toggle autoplay
+  const toggleCarouselAutoplay = () => {
+    setCarouselAutoplay(!carouselAutoplay)
+  }
+
+  // New: Change carousel speed
+  const changeCarouselSpeed = (speed: number) => {
+    setCarouselSpeed(speed)
+  }
+
+  // New: Toggle thumbnails
+  const toggleCarouselThumbnails = () => {
+    setCarouselThumbnails(!carouselThumbnails)
+  }
+
+  // New: Change transition effect
+  const changeCarouselTransition = (transition: 'slide' | 'fade' | 'scale') => {
+    setCarouselTransition(transition)
+  }
+
+  // Enhanced: Listen to carousel API changes
+  React.useEffect(() => {
+    if (!carouselApi) return
+
+    const onSelect = () => {
+      const newIndex = carouselApi.selectedScrollSnap()
+      setCarouselIndex(newIndex)
+    }
+
+    carouselApi.on("select", onSelect)
+    return () => {
+      carouselApi.off("select", onSelect)
+    }
+  }, [carouselApi])
 
   // Calculate canvas bounds to fit all items
   const calculateCanvasBounds = () => {
@@ -965,6 +1064,239 @@ function DynamicCanvas({
     }, 200)
   }
 
+  // Helper function to generate unique IDs
+  const generateId = (type: string) => {
+    const existingIds = items.map(item => item.id)
+    let counter = 1
+    let newId = `${type}-${counter}`
+    while (existingIds.includes(newId)) {
+      counter++
+      newId = `${type}-${counter}`
+    }
+    return newId
+  }
+
+  // Helper function to get random position that doesn't overlap
+  const getRandomPosition = () => {
+    const margin = 100
+    const maxAttempts = 10
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const x = Math.random() * 800 + margin
+      const y = Math.random() * 600 + margin
+      
+      // Check if this position overlaps with existing items
+      const overlaps = items.some(item => 
+        x < item.x + item.width + margin &&
+        x + 400 > item.x - margin &&
+        y < item.y + item.height + margin &&
+        y + 300 > item.y - margin
+      )
+      
+      if (!overlaps) {
+        return { x, y }
+      }
+    }
+    
+    // Fallback: just use a random position
+    return {
+      x: Math.random() * 400 + margin,
+      y: Math.random() * 400 + margin
+    }
+  }
+
+  // Add new chart component
+  const addChart = (type: 'bar' | 'line' | 'pie' | 'donut' | 'metrics') => {
+    const id = generateId('chart')
+    const position = getRandomPosition()
+    const width = 400
+    const height = 300
+
+    // Sample data based on chart type
+    const sampleData = {
+      bar: {
+        values: [120, 190, 300, 500, 200, 350],
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+      },
+      line: {
+        values: [100, 150, 120, 280, 350, 400],
+        labels: ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6']
+      },
+      pie: {
+        values: [30, 25, 20, 15, 10],
+        labels: ['Product A', 'Product B', 'Product C', 'Product D', 'Others']
+      },
+      donut: {
+        values: [40, 30, 20, 10],
+        labels: ['Online', 'Retail', 'Partners', 'Direct']
+      },
+      metrics: {
+        metrics: [
+          { label: 'Users', value: '2,456' },
+          { label: 'Revenue', value: '$78.3K' },
+          { label: 'Conversion', value: '92.1%' },
+          { label: 'Growth', value: '+18%' }
+        ]
+      }
+    }
+
+    const newItem: CanvasItem = {
+      id,
+      type: 'chart',
+      title: `${type.charAt(0).toUpperCase() + type.slice(1)} Chart`,
+      chartData: sampleData[type],
+      chartType: type,
+      x: position.x,
+      y: position.y,
+      width,
+      height,
+      component: createChartComponent(type, `${type.charAt(0).toUpperCase() + type.slice(1)} Chart`, sampleData[type], width, height)
+    }
+
+    const newItems = [...items, newItem]
+    setItems(newItems)
+    saveToHistory(newItems)
+    onItemsChange?.(newItems)
+  }
+
+  // Add new note component
+  const addNote = (color: 'yellow' | 'blue' | 'green' | 'pink' | 'purple' = 'yellow') => {
+    const id = generateId('note')
+    const position = getRandomPosition()
+    const width = 300
+    const height = 200
+
+    const newItem: CanvasItem = {
+      id,
+      type: 'note',
+      title: 'New Note',
+      content: 'Click to edit this note...\n\nYou can:\n• Resize it\n• Move it around\n• Delete it\n• Add your own content',
+      noteColor: color,
+      x: position.x,
+      y: position.y,
+      width,
+      height,
+      component: createNoteComponent('New Note', 'Click to edit this note...\n\nYou can:\n• Resize it\n• Move it around\n• Delete it\n• Add your own content', color, width, height)
+    }
+
+    const newItems = [...items, newItem]
+    setItems(newItems)
+    saveToHistory(newItems)
+    onItemsChange?.(newItems)
+  }
+
+  // Add new URL component
+  const addUrl = (url?: string, title?: string) => {
+    const id = generateId('url')
+    const position = getRandomPosition()
+    const width = 400
+    const height = 300
+
+    const defaultUrls = [
+      { url: 'https://github.com', title: 'GitHub' },
+      { url: 'https://google.com', title: 'Google' },
+      { url: 'https://stackoverflow.com', title: 'Stack Overflow' },
+      { url: 'https://npmjs.com', title: 'NPM Registry' },
+      { url: 'https://react.dev', title: 'React Docs' },
+      { url: 'https://tailwindcss.com', title: 'Tailwind CSS' },
+      { url: 'https://vercel.com', title: 'Vercel' },
+      { url: 'https://nextjs.org', title: 'Next.js' }
+    ]
+
+    // Fix: Properly select random URL when no specific URL is provided
+    let finalUrl: string
+    let finalTitle: string
+
+    if (url) {
+      finalUrl = url
+      finalTitle = title || 'Website'
+    } else {
+      // Pick a truly random URL from the array
+      const randomIndex = Math.floor(Math.random() * defaultUrls.length)
+      const selectedUrl = defaultUrls[randomIndex]
+      finalUrl = selectedUrl.url
+      finalTitle = selectedUrl.title
+    }
+
+    const newItem: CanvasItem = {
+      id,
+      type: 'url',
+      url: finalUrl,
+      title: finalTitle,
+      x: position.x,
+      y: position.y,
+      width,
+      height,
+      component: <LiveWebsiteCard url={finalUrl} title={finalTitle} width={width} height={height} />
+    }
+
+    const newItems = [...items, newItem]
+    setItems(newItems)
+    saveToHistory(newItems)
+    onItemsChange?.(newItems)
+  }
+
+  // Add new universal component
+  const addUniversalComponent = (type: string) => {
+    const componentConfig = ComponentRegistry.get(type)
+    if (!componentConfig) return
+
+    const id = generateId('universal')
+    const position = getRandomPosition()
+    const dimensions = componentConfig.defaultDimensions || { width: 300, height: 200 }
+
+    // Sample props for different component types
+    const sampleProps = {
+      'todo-list': {
+        title: 'My Tasks',
+        items: [
+          { id: '1', text: 'Test the new component', completed: false, createdAt: new Date() },
+          { id: '2', text: 'Add more items', completed: false, createdAt: new Date() }
+        ],
+        maxItems: 10
+      },
+      'timer': {
+        title: 'Work Timer',
+        initialMinutes: 15,
+        autoStart: false
+      },
+      'note': {
+        title: 'Quick Note',
+        content: 'This is a universal note component!',
+        color: 'blue',
+        editable: true
+      },
+      'weather': {
+        city: 'New York',
+        temperature: Math.floor(Math.random() * 40 + 40),
+        condition: ['Sunny', 'Cloudy', 'Rainy', 'Snowy'][Math.floor(Math.random() * 4)],
+        humidity: Math.floor(Math.random() * 40 + 40)
+      }
+    }
+
+    const props = sampleProps[type as keyof typeof sampleProps] || {}
+    const component = ComponentRegistry.createComponent(type, props, id)
+
+    if (component) {
+      const newItem: CanvasItem = {
+        id,
+        type: 'universal',
+        universalType: type,
+        props,
+        x: position.x,
+        y: position.y,
+        width: dimensions.width,
+        height: dimensions.height,
+        component
+      }
+
+      const newItems = [...items, newItem]
+      setItems(newItems)
+      saveToHistory(newItems)
+      onItemsChange?.(newItems)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {editable && (
@@ -1104,7 +1436,113 @@ function DynamicCanvas({
                 🗑️
               </Button>
             </Tooltip>
+
+            {showPalette && (
+              <Tooltip content="🎨 Component Palette - Add new components to the canvas" side="left">
+                <Button
+                  onClick={() => setPaletteOpen(!paletteOpen)}
+                  size="sm"
+                  variant={paletteOpen ? "default" : "outline"}
+                  className={`transition-colors ${paletteOpen ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-green-50'}`}
+                  title="🎨 Component Palette"
+                >
+                  🎨
+                </Button>
+              </Tooltip>
+            )}
           </div>
+
+          {/* Component Palette */}
+          {showPalette && paletteOpen && (
+            <div className="fixed top-1/2 left-4 z-50 bg-white rounded-lg shadow-lg p-4 border max-w-xs transform -translate-y-1/2">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-700">Add Components</h3>
+                <Button
+                  onClick={() => setPaletteOpen(false)}
+                  size="sm"
+                  variant="ghost"
+                  className="w-6 h-6 p-0"
+                >
+                  ✕
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {/* Charts Section */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-600 mb-2">📊 Charts</h4>
+                  <div className="grid grid-cols-2 gap-1">
+                    <Button size="sm" variant="outline" onClick={() => addChart('bar')} className="text-xs">
+                      📊 Bar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addChart('line')} className="text-xs">
+                      📈 Line
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addChart('pie')} className="text-xs">
+                      🥧 Pie
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addChart('donut')} className="text-xs">
+                      🍩 Donut
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addChart('metrics')} className="text-xs col-span-2">
+                      📋 Metrics
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-600 mb-2">📝 Notes</h4>
+                  <div className="grid grid-cols-2 gap-1">
+                    <Button size="sm" variant="outline" onClick={() => addNote('yellow')} className="text-xs bg-yellow-50">
+                      📝 Yellow
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addNote('blue')} className="text-xs bg-blue-50">
+                      📝 Blue
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addNote('green')} className="text-xs bg-green-50">
+                      📝 Green
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addNote('pink')} className="text-xs bg-pink-50">
+                      📝 Pink
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Websites Section */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-600 mb-2">🌐 Websites</h4>
+                  <div className="space-y-1">
+                    <Button size="sm" variant="outline" onClick={() => addUrl()} className="text-xs w-full">
+                      🌐 Random Site
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addUrl('https://github.com', 'GitHub')} className="text-xs w-full">
+                      🐙 GitHub
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Universal Components Section */}
+                <div>
+                  <h4 className="text-xs font-medium text-gray-600 mb-2">🔧 Components</h4>
+                  <div className="grid grid-cols-2 gap-1">
+                    <Button size="sm" variant="outline" onClick={() => addUniversalComponent('todo-list')} className="text-xs">
+                      ✅ Todo
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addUniversalComponent('timer')} className="text-xs">
+                      ⏰ Timer
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addUniversalComponent('weather')} className="text-xs">
+                      🌤️ Weather
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => addUniversalComponent('note')} className="text-xs">
+                      📄 U-Note
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Instructions */}
           <div className="fixed top-4 right-4 z-50">
@@ -1125,15 +1563,22 @@ function DynamicCanvas({
                   <li>• Drag components to move them</li>
                   <li>• Drag bottom-right corner to resize</li>
                   <li>• Hover over items to see controls</li>
+                  <li>• 🎨 Component palette to add new items</li>
                   <li>• 🎠 Turnstile mode for overlapping cards</li>
                   <li>• Click cards in turnstile to focus</li>
-                  <li>• 🎢 Carousel mode for linear navigation</li>
-                  <li>• Arrow keys to navigate in carousel</li>
-                  <li>• 🎯 Auto-fit zooms to show all components</li>
+                  <li>• 🎢 Enhanced carousel with Embla</li>
+                  <li>• Arrow keys/swipe to navigate carousel</li>
+                  <li>• Number keys (1-9) jump to slides</li>
+                  <li>• Ctrl+Space: toggle autoplay</li>
+                  <li>• Ctrl+T: toggle thumbnails</li>
+                  <li>• Escape: exit carousel mode</li>
+                  <li>• 🎯 Auto-fit zooms to show all</li>
                   <li>• 🔍 Reset zoom to return to 100%</li>
                   <li>• 🧩 Auto-layout to arrange in grid</li>
                   <li>• Scroll to navigate large canvases</li>
                   <li>• Ctrl+S to save, Ctrl+Z to undo</li>
+                  <li>• Ctrl+Shift+C: carousel mode</li>
+                  <li>• Ctrl+Shift+T: turnstile mode</li>
                   <li>• Delete key to remove selected items</li>
                   <li>• Pass config prop for data-driven content</li>
                 </ul>
@@ -1173,24 +1618,20 @@ function DynamicCanvas({
             }}
           />
 
-          {/* Draggable Items */}
-          {items.map((item, index) => {
+          {/* Draggable Items - Hide when in carousel mode */}
+          {!carouselMode && items.map((item, index) => {
             const turnstilePos = turnstileMode 
               ? calculateTurnstilePosition(index, items.length, focusedItemId !== null, item.id === focusedItemId)
               : null
 
-            const carouselPos = carouselMode
-              ? calculateCarouselPosition(index, items.length, carouselIndex)
-              : null
-
-            const isInSpecialMode = turnstileMode || carouselMode
+            const isInSpecialMode = turnstileMode
 
             return (
               <DraggableItem
                 key={item.id}
                 id={item.id}
-                initialX={carouselMode ? carouselPos!.x : (turnstileMode ? turnstilePos!.x : item.x)}
-                initialY={carouselMode ? carouselPos!.y : (turnstileMode ? turnstilePos!.y : item.y)}
+                initialX={turnstileMode ? turnstilePos!.x : item.x}
+                initialY={turnstileMode ? turnstilePos!.y : item.y}
                 initialWidth={item.width}
                 initialHeight={item.height}
                 onPositionChange={isInSpecialMode ? () => {} : handlePositionChange}
@@ -1198,13 +1639,13 @@ function DynamicCanvas({
                 onDelete={editable && !isInSpecialMode ? deleteItem : undefined}
                 resizable={!isInSpecialMode}
                 style={{
-                  transform: carouselMode ? `scale(${carouselPos!.scale})` : (turnstileMode ? `scale(${turnstilePos!.scale})` : 'scale(1)'),
-                  opacity: carouselMode ? carouselPos!.opacity : (turnstileMode ? turnstilePos!.opacity : 1),
-                  zIndex: carouselMode ? carouselPos!.zIndex : (turnstileMode ? turnstilePos!.zIndex : 'auto'),
+                  transform: turnstileMode ? `scale(${turnstilePos!.scale})` : 'scale(1)',
+                  opacity: turnstileMode ? turnstilePos!.opacity : 1,
+                  zIndex: turnstileMode ? turnstilePos!.zIndex : 'auto',
                   transition: isInSpecialMode ? 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
                   cursor: isInSpecialMode ? 'pointer' : 'move'
                 }}
-                onClick={turnstileMode ? () => focusOnItem(item.id) : (carouselMode ? () => goToCarouselItem(index) : undefined)}
+                onClick={turnstileMode ? () => focusOnItem(item.id) : undefined}
                 disabled={isInSpecialMode}
               >
                 {item.component}
@@ -1232,57 +1673,166 @@ function DynamicCanvas({
             </div>
           )}
 
-          {/* Carousel Mode Overlay */}
+          {/* Enhanced Carousel Mode Overlay */}
           {carouselMode && (
             <div className="absolute inset-0 pointer-events-none z-5">
-              {/* Navigation Controls */}
-              <div className="absolute top-1/2 left-4 transform -translate-y-1/2 pointer-events-auto">
-                <Button
-                  onClick={prevCarouselItem}
-                  size="lg"
-                  variant="outline"
-                  className="bg-white/90 hover:bg-white text-gray-700 rounded-full w-12 h-12 shadow-lg"
-                  disabled={items.length === 0}
+              {/* Enhanced Carousel Container */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Carousel
+                  setApi={setCarouselApi}
+                  className="w-full max-w-6xl pointer-events-auto"
+                  opts={{
+                    align: "center",
+                    loop: true,
+                    skipSnaps: false,
+                    dragFree: false,
+                  }}
+                  plugins={[]}
                 >
-                  ←
-                </Button>
-              </div>
-              
-              <div className="absolute top-1/2 right-4 transform -translate-y-1/2 pointer-events-auto">
-                <Button
-                  onClick={nextCarouselItem}
-                  size="lg"
-                  variant="outline"
-                  className="bg-white/90 hover:bg-white text-gray-700 rounded-full w-12 h-12 shadow-lg"
-                  disabled={items.length === 0}
-                >
-                  →
-                </Button>
-              </div>
-              
-              {/* Info Display */}
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 text-white text-center">
-                <div className="bg-black bg-opacity-50 rounded-lg p-4">
-                  <p className="text-lg font-semibold">🎢 Carousel Mode</p>
-                  <p className="text-sm opacity-75">
-                    {items.length > 0 ? `${carouselIndex + 1} of ${items.length}` : 'No items'}
-                  </p>
-                  <p className="text-xs opacity-50 mt-2">Use arrow keys or click navigation buttons • Click items to jump</p>
+                  <CarouselContent className="-ml-2 md:-ml-4">
+                    {items.map((item, index) => (
+                      <CarouselItem key={item.id} className="pl-2 md:pl-4 basis-full">
+                        <div className="flex items-center justify-center h-[70vh]">
+                          <div 
+                            className={`relative bg-white rounded-lg shadow-2xl border-2 overflow-hidden transition-all duration-500 ${
+                              carouselTransition === 'scale' ? 'hover:scale-105' : ''
+                            } ${
+                              carouselTransition === 'fade' ? 'animate-in fade-in-0' : ''
+                            }`}
+                            style={{
+                              width: `${item.width}px`,
+                              height: `${item.height}px`,
+                              maxWidth: '90vw',
+                              maxHeight: '70vh'
+                            }}
+                          >
+                            {item.component}
+                          </div>
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
                   
-                  {/* Dot Indicator */}
+                  {/* Enhanced Navigation */}
+                  <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 w-16 h-16 bg-white/95 hover:bg-white border-2 shadow-xl" />
+                  <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 w-16 h-16 bg-white/95 hover:bg-white border-2 shadow-xl" />
+                </Carousel>
+              </div>
+
+              {/* Enhanced Control Panel */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+                <div className="bg-black/80 backdrop-blur-sm rounded-xl p-6 text-white text-center min-w-[400px]">
+                  {/* Title */}
+                  <div className="mb-4">
+                    <p className="text-xl font-bold">🎢 Enhanced Carousel Mode</p>
+                    <p className="text-sm text-white/75">
+                      {items.length > 0 ? `${carouselIndex + 1} of ${items.length}` : 'No items'}
+                    </p>
+                  </div>
+
+                  {/* Progress Bar */}
                   {items.length > 1 && (
-                    <div className="flex justify-center mt-3 space-x-1">
+                    <div className="w-full bg-white/20 rounded-full h-1 mb-4">
+                      <div 
+                        className="bg-white h-1 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${((carouselIndex + 1) / items.length) * 100}%` 
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Dot Indicators */}
+                  {items.length > 1 && (
+                    <div className="flex justify-center mb-4 space-x-2">
                       {items.map((_, index) => (
                         <button
                           key={index}
                           onClick={() => goToCarouselItem(index)}
-                          className={`w-2 h-2 rounded-full transition-colors pointer-events-auto ${
-                            index === carouselIndex ? 'bg-white' : 'bg-white/40'
+                          className={`w-3 h-3 rounded-full transition-all duration-300 hover:scale-125 ${
+                            index === carouselIndex 
+                              ? 'bg-white scale-110' 
+                              : 'bg-white/40 hover:bg-white/60'
                           }`}
                         />
                       ))}
                     </div>
                   )}
+
+                  {/* Control Buttons */}
+                  <div className="flex justify-center space-x-2 mb-4">
+                    <Button
+                      onClick={toggleCarouselAutoplay}
+                      size="sm"
+                      variant={carouselAutoplay ? "default" : "outline"}
+                      className={`${carouselAutoplay ? 'bg-green-600 hover:bg-green-700' : 'bg-white/20 hover:bg-white/30'} border-white/30`}
+                    >
+                      {carouselAutoplay ? '⏸️' : '▶️'}
+                    </Button>
+                    
+                    <Button
+                      onClick={toggleCarouselThumbnails}
+                      size="sm"
+                      variant={carouselThumbnails ? "default" : "outline"}
+                      className={`${carouselThumbnails ? 'bg-blue-600 hover:bg-blue-700' : 'bg-white/20 hover:bg-white/30'} border-white/30`}
+                    >
+                      🖼️
+                    </Button>
+
+                    <select
+                      value={carouselSpeed}
+                      onChange={(e) => changeCarouselSpeed(Number(e.target.value))}
+                      className="px-2 py-1 text-xs bg-white/20 border border-white/30 rounded text-white"
+                    >
+                      <option value={1000} className="text-black">1s</option>
+                      <option value={2000} className="text-black">2s</option>
+                      <option value={3000} className="text-black">3s</option>
+                      <option value={5000} className="text-black">5s</option>
+                    </select>
+
+                    <select
+                      value={carouselTransition}
+                      onChange={(e) => changeCarouselTransition(e.target.value as 'slide' | 'fade' | 'scale')}
+                      className="px-2 py-1 text-xs bg-white/20 border border-white/30 rounded text-white"
+                    >
+                      <option value="slide" className="text-black">Slide</option>
+                      <option value="fade" className="text-black">Fade</option>
+                      <option value="scale" className="text-black">Scale</option>
+                    </select>
+                  </div>
+
+                  {/* Enhanced Thumbnails Preview */}
+                  {carouselThumbnails && items.length > 1 && (
+                    <div className="flex justify-center space-x-2 overflow-x-auto max-w-full pb-2 px-2">
+                      {items.map((item, index) => (
+                        <CarouselThumbnail
+                          key={index}
+                          index={index}
+                          isActive={index === carouselIndex}
+                          onClick={() => goToCarouselItem(index)}
+                          className="flex-shrink-0 border-white/30 hover:border-white/60"
+                        >
+                          <div 
+                            className={`w-full h-full bg-gradient-to-br ${
+                              item.type === 'chart' ? 'from-blue-400 to-blue-600' :
+                              item.type === 'note' ? 'from-yellow-400 to-orange-500' :
+                              item.type === 'url' ? 'from-green-400 to-teal-500' :
+                              'from-purple-400 to-pink-500'
+                            } flex items-center justify-center text-lg`}
+                            title={item.title || `${item.type} ${index + 1}`}
+                          >
+                            {item.type === 'chart' ? '📊' : 
+                             item.type === 'note' ? '📝' : 
+                             item.type === 'url' ? '🌐' : '📦'}
+                          </div>
+                        </CarouselThumbnail>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-white/50 mt-2">
+                    Swipe, arrow keys, or click to navigate • Enhanced with Embla Carousel
+                  </div>
                 </div>
               </div>
             </div>
@@ -1474,7 +2024,7 @@ export default function CanvasDemo() {
     }
   }
 
-  return <DynamicCanvas config={sampleConfig} />
+  return <DynamicCanvas config={sampleConfig} showPalette={true} />
 }
 
 // Export DynamicCanvas as a named export for reuse
