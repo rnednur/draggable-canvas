@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -299,6 +299,13 @@ export function WeatherComponent({
   condition = "Sunny",
   humidity = 65 
 }: WeatherProps) {
+  const [currentTime, setCurrentTime] = useState<string>('')
+
+  useEffect(() => {
+    // Set time only on client side to avoid hydration mismatch
+    setCurrentTime(new Date().toLocaleTimeString())
+  }, [])
+
   const getWeatherEmoji = (condition: string) => {
     const conditions: Record<string, string> = {
       'sunny': '☀️',
@@ -332,9 +339,11 @@ export function WeatherComponent({
           <div>Feels like: {temperature + 2}°F</div>
         </div>
         
-        <div className="text-xs opacity-60 mt-4">
-          Last updated: {new Date().toLocaleTimeString()}
-        </div>
+        {currentTime && (
+          <div className="text-xs opacity-60 mt-4">
+            Last updated: {currentTime}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -349,7 +358,7 @@ export const UNIVERSAL_COMPONENTS = {
     defaultDimensions: { width: 300, height: 400 },
     defaultProps: {
       title: 'My Tasks',
-      items: [],
+      items: [] as TodoItem[],
       maxItems: 10
     },
     validate: (props: any): props is TodoListProps => {

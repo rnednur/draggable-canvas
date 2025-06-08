@@ -36,7 +36,7 @@ function createChartComponent(type: ChartType, title: string, width: number, hei
   )
 }
 
-// Helper function to create note components
+// Simple static note component - no editing, just display
 function createNoteComponent(title: string, content: string, color: NoteColor, width: number, height: number) {
   const colorClasses = {
     yellow: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800',
@@ -49,62 +49,58 @@ function createNoteComponent(title: string, content: string, color: NoteColor, w
   return (
     <Card className={`w-full h-full ${colorClasses[color]}`}>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">📝 {title}</CardTitle>
+        <CardTitle className="text-lg flex items-center gap-2">
+          📝 {title}
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm whitespace-pre-wrap">{content}</p>
+      <CardContent className="flex-1 flex flex-col">
+        <div className="flex-1 text-sm whitespace-pre-wrap">
+          {content}
+        </div>
       </CardContent>
     </Card>
   )
 }
 
 // Sample items for demonstration
-const createSampleItems = (): CanvasItem[] => [
-  {
-    id: 'demo-chart-1',
-    type: 'chart',
-    x: 100,
-    y: 100,
-    width: 350,
-    height: 250,
-    title: 'Sample Chart',
-    chartType: 'bar',
-    chartData: { values: [120, 190, 300], labels: ['A', 'B', 'C'] },
-    component: createChartComponent('bar', 'Sample Chart', 350, 250)
-  },
-  {
-    id: 'demo-note-1',
-    type: 'note',
-    x: 500,
-    y: 120,
-    width: 300,
-    height: 200,
-    title: 'Sticky Note',
-    content: 'This is a shadcn-themed note!\n\n• Draggable & Resizable\n• Themed with CSS variables\n• Dark mode compatible',
-    noteColor: 'yellow',
-    component: createNoteComponent('Sticky Note', 'This is a shadcn-themed note!\n\n• Draggable & Resizable\n• Themed with CSS variables\n• Dark mode compatible', 'yellow', 300, 200)
-  },
-  {
-    id: 'demo-website-1',
-    type: 'url',
-    x: 150,
-    y: 400,
-    width: 400,
-    height: 300,
-    url: 'https://ui.shadcn.com',
-    title: 'shadcn/ui',
-    component: <LiveWebsiteCard url="https://ui.shadcn.com" title="shadcn/ui" width={400} height={300} />
-  }
-]
+const createSampleItems = (): CanvasItem[] => {
+  const items: CanvasItem[] = [
+    {
+      id: 'demo-chart-1',
+      type: 'chart',
+      x: 100,
+      y: 100,
+      width: 350,
+      height: 250,
+      title: 'Sample Chart',
+      chartType: 'bar',
+      chartData: { values: [120, 190, 300], labels: ['A', 'B', 'C'] },
+      component: createChartComponent('bar', 'Sample Chart', 350, 250)
+    },
+    {
+      id: 'demo-website-1',
+      type: 'url',
+      x: 150,
+      y: 400,
+      width: 400,
+      height: 300,
+      url: 'https://ui.shadcn.com',
+      title: 'shadcn/ui',
+      component: <LiveWebsiteCard url="https://ui.shadcn.com" title="shadcn/ui" width={400} height={300} />
+    }
+  ]
+  
+  return items
+}
 
 export default function ShadcnCanvasDemo() {
   const [variant, setVariant] = useState<"default" | "minimal" | "dark" | "grid">("grid")
   const [size, setSize] = useState<"default" | "compact" | "full">("full")
   const [toolbarPosition, setToolbarPosition] = useState<"top-right" | "top-left" | "bottom-right" | "bottom-left" | "top-center" | "right-center">("right-center")
-  const [items, setItems] = useState<CanvasItem[]>(createSampleItems())
+  const [items, setItems] = useState<CanvasItem[]>([])
   
   // Canvas state management
-  const [history, setHistory] = useState<CanvasItem[][]>([createSampleItems()])
+  const [history, setHistory] = useState<CanvasItem[][]>([[]])
   const [historyIndex, setHistoryIndex] = useState(0)
 
   // Advanced features state
@@ -114,6 +110,9 @@ export default function ShadcnCanvasDemo() {
   const [focusedItemId, setFocusedItemId] = useState<string | null>(null)
   const [canvasScale, setCanvasScale] = useState(1)
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 })
+
+  // Palette state
+  const [paletteOpen, setPaletteOpen] = useState(false)
 
   // Save to history whenever items change
   const saveToHistory = (newItems: CanvasItem[]) => {
@@ -140,6 +139,38 @@ export default function ShadcnCanvasDemo() {
     x: Math.random() * 300 + 100,
     y: Math.random() * 300 + 100
   })
+
+  // Initialize items with simple components
+  useEffect(() => {
+    if (items.length === 0) {
+      const initialItems = createSampleItems()
+      
+      // Add the demo note
+      const demoNote: CanvasItem = {
+        id: 'demo-note-1',
+        type: 'note',
+        x: 500,
+        y: 120,
+        width: 300,
+        height: 200,
+        title: 'Sticky Note',
+        content: 'This is a shadcn-themed note!\n\n• Draggable & Resizable\n• Themed with CSS variables\n• Dark mode compatible',
+        noteColor: 'yellow',
+        component: createNoteComponent(
+          'Sticky Note',
+          'This is a shadcn-themed note!\n\n• Draggable & Resizable\n• Themed with CSS variables\n• Dark mode compatible',
+          'yellow',
+          300,
+          200
+        )
+      }
+      
+      const itemsWithNote = [...initialItems, demoNote]
+      setItems(itemsWithNote)
+      setHistory([itemsWithNote])
+      setHistoryIndex(0)
+    }
+  }, []) // Empty dependency array means this runs once on mount
 
   // Canvas actions
   const handleSave = () => {
@@ -215,8 +246,9 @@ export default function ShadcnCanvasDemo() {
         })
         
         config.notes?.forEach((noteConfig, index) => {
+          const noteId = `note-${index + 1}`
           newItems.push({
-            id: `note-${index + 1}`,
+            id: noteId,
             type: 'note',
             title: noteConfig.title,
             content: noteConfig.content,
@@ -225,7 +257,13 @@ export default function ShadcnCanvasDemo() {
             y: noteConfig.y || 100,
             width: noteConfig.width || 300,
             height: noteConfig.height || 200,
-            component: createNoteComponent(noteConfig.title, noteConfig.content, noteConfig.color || 'yellow', noteConfig.width || 300, noteConfig.height || 200)
+            component: createNoteComponent(
+              noteConfig.title, 
+              noteConfig.content, 
+              noteConfig.color || 'yellow', 
+              noteConfig.width || 300, 
+              noteConfig.height || 200
+            )
           })
         })
         
@@ -315,18 +353,26 @@ export default function ShadcnCanvasDemo() {
     const position = getRandomPosition()
     const width = 300
     const height = 200
+    const title = 'New Note'
+    const content = 'Click to edit this note...\n\nYou can add your own content here!'
 
     const newItem: CanvasItem = {
       id,
       type: 'note',
-      title: 'New Note',
-      content: 'Click to edit this note...\n\nYou can add your own content here!',
+      title,
+      content,
       noteColor: color,
       x: position.x,
       y: position.y,
       width,
       height,
-      component: createNoteComponent('New Note', 'Click to edit this note...\n\nYou can add your own content here!', color, width, height)
+      component: createNoteComponent(
+        title,
+        content,
+        color,
+        width,
+        height
+      )
     }
 
     const newItems = [...items, newItem]
@@ -475,6 +521,16 @@ export default function ShadcnCanvasDemo() {
     setCanvasOffset({ x: 0, y: 0 })
   }
 
+  const handleZoomIn = () => {
+    const newScale = Math.min(canvasScale * 1.2, 3) // Max zoom 3x
+    setCanvasScale(newScale)
+  }
+
+  const handleZoomOut = () => {
+    const newScale = Math.max(canvasScale / 1.2, 0.1) // Min zoom 0.1x
+    setCanvasScale(newScale)
+  }
+
   const handleAutoLayout = () => {
     if (items.length === 0) return
 
@@ -574,17 +630,27 @@ export default function ShadcnCanvasDemo() {
   }
 
   const addSampleItem = () => {
+    const id = `demo-item-${Date.now()}`
+    const title = 'New Item'
+    const content = 'This is a dynamically added item!'
+    
     const newItem = {
-      id: `demo-item-${Date.now()}`,
+      id,
       type: 'note' as const,
       x: Math.random() * 300 + 100,
       y: Math.random() * 300 + 100,
       width: 250,
       height: 180,
-      title: 'New Item',
-      content: 'This is a dynamically added item!',
+      title,
+      content,
       noteColor: 'purple' as NoteColor,
-      component: createNoteComponent('New Item', 'This is a dynamically added item!', 'purple', 250, 180)
+      component: createNoteComponent(
+        title,
+        content,
+        'purple',
+        250,
+        180
+      )
     }
     const newItems = [...items, newItem]
     setItems(newItems)
@@ -638,6 +704,15 @@ export default function ShadcnCanvasDemo() {
       } else if (e.key === 't' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
         e.preventDefault()
         toggleTurnstileMode()
+      } else if (e.key === '=' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        handleZoomIn()
+      } else if (e.key === '-' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        handleZoomOut()
+      } else if (e.key === '0' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        handleResetZoom()
       }
     }
 
@@ -663,94 +738,130 @@ export default function ShadcnCanvasDemo() {
                 Showcase of the shadcn-compatible Canvas component with working functionality
               </p>
             </div>
-            <div className="text-sm text-muted-foreground">
-              Items: {items.length} | History: {historyIndex + 1}/{history.length}
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                Items: {items.length} | History: {historyIndex + 1}/{history.length}
+              </div>
+              <Button
+                onClick={() => setPaletteOpen(!paletteOpen)}
+                variant={paletteOpen ? "default" : "outline"}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                🎨 {paletteOpen ? 'Hide' : 'Show'} Palette
+              </Button>
             </div>
           </div>
+          
+          {/* Collapsible Palette Section */}
+          {paletteOpen && (
+            <div className="border-t mt-4 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Charts Section */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">📊 Charts</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddChart('bar')} 
+                      className="text-xs h-8"
+                    >
+                      📊 Bar Chart
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddChart('line')} 
+                      className="text-xs h-8"
+                    >
+                      📈 Line Chart
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddChart('pie')} 
+                      className="text-xs h-8"
+                    >
+                      🥧 Pie Chart
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddChart('donut')} 
+                      className="text-xs h-8"
+                    >
+                      🍩 Donut Chart
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">📝 Notes</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddNote('yellow')} 
+                      className="text-xs h-8 bg-yellow-50 hover:bg-yellow-100 border-yellow-200"
+                    >
+                      📝 Yellow Note
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddNote('blue')} 
+                      className="text-xs h-8 bg-blue-50 hover:bg-blue-100 border-blue-200"
+                    >
+                      📝 Blue Note
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddNote('green')} 
+                      className="text-xs h-8 bg-green-50 hover:bg-green-100 border-green-200"
+                    >
+                      📝 Green Note
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddNote('pink')} 
+                      className="text-xs h-8 bg-pink-50 hover:bg-pink-100 border-pink-200"
+                    >
+                      📝 Pink Note
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Websites & Components Section */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">🌐 Components</h4>
+                  <div className="space-y-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleAddUrl()} 
+                      className="text-xs w-full h-8"
+                    >
+                      🌐 Add Website
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={addSampleItem} 
+                      className="text-xs w-full h-8"
+                    >
+                      ➕ Add Sample Item
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
-
-      {/* Controls */}
-      <div className="border-b bg-muted/30">
-        <div className="container mx-auto px-4 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Variant Selector */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Canvas Variant</label>
-              <div className="grid grid-cols-2 gap-1">
-                {(['default', 'minimal', 'dark', 'grid'] as const).map((v) => (
-                  <Button
-                    key={v}
-                    size="sm"
-                    variant={variant === v ? "default" : "outline"}
-                    onClick={() => setVariant(v)}
-                    className="text-xs"
-                  >
-                    {v.charAt(0).toUpperCase() + v.slice(1)}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Size Selector */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Canvas Size</label>
-              <div className="grid grid-cols-3 gap-1">
-                {(['default', 'compact', 'full'] as const).map((s) => (
-                  <Button
-                    key={s}
-                    size="sm"
-                    variant={size === s ? "default" : "outline"}
-                    onClick={() => setSize(s)}
-                    className="text-xs"
-                  >
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Toolbar Position */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Toolbar Position</label>
-              <div className="grid grid-cols-2 gap-1">
-                <Button
-                  size="sm"
-                  variant={toolbarPosition.includes('right') ? "default" : "outline"}
-                  onClick={() => setToolbarPosition('right-center')}
-                  className="text-xs"
-                >
-                  Right
-                </Button>
-                <Button
-                  size="sm"
-                  variant={toolbarPosition.includes('top') ? "default" : "outline"}
-                  onClick={() => setToolbarPosition('top-right')}
-                  className="text-xs"
-                >
-                  Top
-                </Button>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Quick Actions</label>
-              <div className="space-y-1">
-                <Button onClick={addSampleItem} size="sm" className="w-full text-xs">
-                  ➕ Add Item
-                </Button>
-                <Button onClick={handleAutoLayout} variant="outline" size="sm" className="w-full text-xs">
-                  🧩 Auto-Layout
-                </Button>
-                <Button onClick={handleAutoFit} variant="outline" size="sm" className="w-full text-xs">
-                  🎯 Auto-Fit
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Canvas Demo */}
       <div className="relative">
@@ -763,7 +874,7 @@ export default function ShadcnCanvasDemo() {
           onLoad={() => { handleLoad(); return null; }}
           className="border-t canvas-container"
           showToolbar={true}
-          showPalette={true} // Enable built-in palette
+          showPalette={false} // Disable built-in palette, using external one
           // Palette handlers
           onAddChart={handleAddChart}
           onAddNote={handleAddNote}
@@ -775,190 +886,199 @@ export default function ShadcnCanvasDemo() {
           onClear={handleClear}
           onExport={handleExport}
           onAutoFit={handleAutoFit}
+          onAutoLayout={handleAutoLayout}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onZoomReset={handleResetZoom}
           onToggleCarousel={toggleCarouselMode}
           onToggleTurnstile={toggleTurnstileMode}
           canUndo={historyIndex > 0}
           canRedo={historyIndex < history.length - 1}
           carouselMode={carouselMode}
           turnstileMode={turnstileMode}
-          style={{
-            transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
-            transformOrigin: 'top left',
-            transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-          }}
         >
-          {/* Render demo items with advanced positioning */}
-          {!carouselMode && items.map((item, index) => {
-            const turnstilePos = turnstileMode 
-              ? calculateTurnstilePosition(index, items.length, focusedItemId !== null, item.id === focusedItemId)
-              : null
+          {/* Canvas content area with transform */}
+          <div
+            className="relative w-full h-full"
+            style={{
+              transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
+              transformOrigin: 'top left',
+              transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          >
+            {/* Render demo items with advanced positioning */}
+            {!carouselMode && items.map((item, index) => {
+              const turnstilePos = turnstileMode 
+                ? calculateTurnstilePosition(index, items.length, focusedItemId !== null, item.id === focusedItemId)
+                : null
 
-            const isInSpecialMode = turnstileMode
+              const isInSpecialMode = turnstileMode
 
-            return (
-              <DraggableItem
-                key={item.id}
-                id={item.id}
-                initialX={turnstileMode ? turnstilePos!.x : item.x}
-                initialY={turnstileMode ? turnstilePos!.y : item.y}
-                initialWidth={item.width}
-                initialHeight={item.height}
-                onPositionChange={isInSpecialMode ? () => {} : (id, x, y) => {
-                  const newItems = items.map(i => i.id === id ? {...i, x, y} : i)
-                  setItems(newItems)
-                }}
-                onSizeChange={isInSpecialMode ? () => {} : (id, width, height) => {
-                  const newItems = items.map(i => i.id === id ? {...i, width, height} : i)
-                  setItems(newItems)
-                }}
-                onDelete={isInSpecialMode ? undefined : (id) => {
-                  const newItems = items.filter(i => i.id !== id)
-                  setItems(newItems)
-                  saveToHistory(newItems)
-                }}
-                resizable={!isInSpecialMode}
-                style={{
-                  transform: turnstileMode ? `scale(${turnstilePos!.scale})` : 'scale(1)',
-                  opacity: turnstileMode ? turnstilePos!.opacity : 1,
-                  zIndex: turnstileMode ? turnstilePos!.zIndex : 'auto',
-                  transition: isInSpecialMode ? 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
-                  cursor: isInSpecialMode ? 'pointer' : 'move'
-                }}
-                onClick={turnstileMode ? () => focusOnItem(item.id) : undefined}
-                disabled={isInSpecialMode}
-              >
-                {item.component}
-              </DraggableItem>
-            )
-          })}
-
-          {/* Carousel Mode Items */}
-          {carouselMode && items.map((item, index) => {
-            const carouselPos = calculateCarouselPosition(index, items.length, carouselIndex)
-            
-            return (
-              <div
-                key={`carousel-${item.id}`}
-                className="absolute transition-all duration-500 ease-in-out pointer-events-none"
-                style={{
-                  left: `${carouselPos.x}px`,
-                  top: `${carouselPos.y}px`,
-                  width: `${item.width}px`,
-                  height: `${item.height}px`,
-                  transform: `scale(${carouselPos.scale})`,
-                  opacity: carouselPos.opacity,
-                  zIndex: carouselPos.zIndex
-                }}
-              >
-                <div className="w-full h-full bg-white rounded-lg shadow-2xl border-2 overflow-hidden">
+              return (
+                <DraggableItem
+                  key={item.id}
+                  id={item.id}
+                  initialX={turnstileMode ? turnstilePos!.x : item.x}
+                  initialY={turnstileMode ? turnstilePos!.y : item.y}
+                  initialWidth={item.width}
+                  initialHeight={item.height}
+                  onPositionChange={isInSpecialMode ? () => {} : (id, x, y) => {
+                    const newItems = items.map(i => i.id === id ? {...i, x, y} : i)
+                    setItems(newItems)
+                  }}
+                  onSizeChange={isInSpecialMode ? () => {} : (id, width, height) => {
+                    const newItems = items.map(i => i.id === id ? {...i, width, height} : i)
+                    setItems(newItems)
+                  }}
+                  onDelete={isInSpecialMode ? undefined : (id) => {
+                    const newItems = items.filter(i => i.id !== id)
+                    setItems(newItems)
+                    saveToHistory(newItems)
+                  }}
+                  resizable={!isInSpecialMode}
+                  style={{
+                    transform: turnstileMode ? `scale(${turnstilePos!.scale})` : 'scale(1)',
+                    opacity: turnstileMode ? turnstilePos!.opacity : 1,
+                    zIndex: turnstileMode ? turnstilePos!.zIndex : 'auto',
+                    transition: isInSpecialMode ? 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' : 'none',
+                    cursor: isInSpecialMode ? 'pointer' : 'move'
+                  }}
+                  onClick={turnstileMode ? () => focusOnItem(item.id) : undefined}
+                  disabled={isInSpecialMode}
+                >
                   {item.component}
+                </DraggableItem>
+              )
+            })}
+
+            {/* Carousel Mode Items */}
+            {carouselMode && items.map((item, index) => {
+              const carouselPos = calculateCarouselPosition(index, items.length, carouselIndex)
+              
+              return (
+                <div
+                  key={`carousel-${item.id}`}
+                  className="absolute transition-all duration-500 ease-in-out pointer-events-none"
+                  style={{
+                    left: `${carouselPos.x}px`,
+                    top: `${carouselPos.y}px`,
+                    width: `${item.width}px`,
+                    height: `${item.height}px`,
+                    transform: `scale(${carouselPos.scale})`,
+                    opacity: carouselPos.opacity,
+                    zIndex: carouselPos.zIndex
+                  }}
+                >
+                  <div className="w-full h-full bg-white rounded-lg shadow-2xl border-2 overflow-hidden">
+                    {item.component}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
 
-          {/* Turnstile Mode Overlay */}
-          {turnstileMode && (
-            <div className="absolute inset-0 bg-black bg-opacity-20 pointer-events-none z-50">
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
-                {focusedItemId ? (
-                  <div className="bg-black bg-opacity-50 rounded-lg p-4">
-                    <p className="text-lg font-semibold">Focused Mode</p>
-                    <p className="text-sm opacity-75">Click the focused item again to unfocus</p>
-                  </div>
-                ) : (
-                  <div className="bg-black bg-opacity-50 rounded-lg p-4">
-                    <p className="text-lg font-semibold">🎠 Turnstile Mode</p>
-                    <p className="text-sm opacity-75">Click any card to focus on it</p>
-                    <p className="text-xs opacity-50 mt-2">Items arranged in a circle • Drag disabled</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Carousel Mode Overlay */}
-          {carouselMode && (
-            <div className="absolute inset-0 pointer-events-none z-50">
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-auto">
-                <div className="bg-black/80 backdrop-blur-sm rounded-xl p-6 text-white text-center min-w-[400px]">
-                  <div className="mb-4">
-                    <p className="text-xl font-bold">🎢 Carousel Mode</p>
-                    <p className="text-sm text-white/75">
-                      {items.length > 0 ? `${carouselIndex + 1} of ${items.length}` : 'No items'}
-                    </p>
-                  </div>
-
-                  {/* Progress Bar */}
-                  {items.length > 1 && (
-                    <div className="w-full bg-white/20 rounded-full h-1 mb-4">
-                      <div 
-                        className="bg-white h-1 rounded-full transition-all duration-300"
-                        style={{ width: `${((carouselIndex + 1) / items.length) * 100}%` }}
-                      />
+            {/* Turnstile Mode Overlay */}
+            {turnstileMode && (
+              <div className="absolute inset-0 bg-black bg-opacity-20 pointer-events-none z-50">
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-center">
+                  {focusedItemId ? (
+                    <div className="bg-black bg-opacity-50 rounded-lg p-4">
+                      <p className="text-lg font-semibold">Focused Mode</p>
+                      <p className="text-sm opacity-75">Click the focused item again to unfocus</p>
+                    </div>
+                  ) : (
+                    <div className="bg-black bg-opacity-50 rounded-lg p-4">
+                      <p className="text-lg font-semibold">🎠 Turnstile Mode</p>
+                      <p className="text-sm opacity-75">Click any card to focus on it</p>
+                      <p className="text-xs opacity-50 mt-2">Items arranged in a circle • Drag disabled</p>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
 
-                  {/* Dot Indicators */}
-                  {items.length > 1 && (
-                    <div className="flex justify-center mb-4 space-x-2">
-                      {items.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setCarouselIndex(index)}
-                          className={`w-3 h-3 rounded-full transition-all duration-300 hover:scale-125 ${
-                            index === carouselIndex 
-                              ? 'bg-white scale-110' 
-                              : 'bg-white/40 hover:bg-white/60'
-                          }`}
+            {/* Carousel Mode Overlay */}
+            {carouselMode && (
+              <div className="absolute inset-0 pointer-events-none z-50">
+                <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+                  <div className="bg-black/80 backdrop-blur-sm rounded-xl p-6 text-white text-center min-w-[400px]">
+                    <div className="mb-4">
+                      <p className="text-xl font-bold">🎢 Carousel Mode</p>
+                      <p className="text-sm text-white/75">
+                        {items.length > 0 ? `${carouselIndex + 1} of ${items.length}` : 'No items'}
+                      </p>
+                    </div>
+
+                    {/* Progress Bar */}
+                    {items.length > 1 && (
+                      <div className="w-full bg-white/20 rounded-full h-1 mb-4">
+                        <div 
+                          className="bg-white h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${((carouselIndex + 1) / items.length) * 100}%` }}
                         />
-                      ))}
+                      </div>
+                    )}
+
+                    {/* Dot Indicators */}
+                    {items.length > 1 && (
+                      <div className="flex justify-center mb-4 space-x-2">
+                        {items.map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setCarouselIndex(index)}
+                            className={`w-3 h-3 rounded-full transition-all duration-300 hover:scale-125 ${
+                              index === carouselIndex 
+                                ? 'bg-white scale-110' 
+                                : 'bg-white/40 hover:bg-white/60'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Navigation Buttons */}
+                    <div className="flex justify-center space-x-2 mb-4">
+                      <Button
+                        onClick={prevCarouselItem}
+                        size="sm"
+                        className="bg-white/20 hover:bg-white/30 border-white/30"
+                      >
+                        ← Previous
+                      </Button>
+                      <Button
+                        onClick={nextCarouselItem}
+                        size="sm"
+                        className="bg-white/20 hover:bg-white/30 border-white/30"
+                      >
+                        Next →
+                      </Button>
                     </div>
-                  )}
 
-                  {/* Navigation Buttons */}
-                  <div className="flex justify-center space-x-2 mb-4">
-                    <Button
-                      onClick={prevCarouselItem}
-                      size="sm"
-                      className="bg-white/20 hover:bg-white/30 border-white/30"
-                    >
-                      ← Previous
-                    </Button>
-                    <Button
-                      onClick={nextCarouselItem}
-                      size="sm"
-                      className="bg-white/20 hover:bg-white/30 border-white/30"
-                    >
-                      Next →
-                    </Button>
-                  </div>
-
-                  <div className="text-xs text-white/50 mt-2">
-                    Arrow keys to navigate • Number keys (1-9) to jump • Escape to exit
+                    <div className="text-xs text-white/50 mt-2">
+                      Arrow keys to navigate • Number keys (1-9) to jump • Escape to exit
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Demo overlay for empty canvas */}
-          {items.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <Card className="w-96 shadow-lg">
-                <CardContent className="text-center p-8">
-                  <div className="text-6xl mb-4">🎨</div>
-                  <h3 className="text-xl font-semibold mb-2">Canvas is Empty</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Add some items using the toolbar or palette to see the shadcn Canvas in action!
-                  </p>
-                  <Button onClick={addSampleItem}>
-                    Add Sample Item
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+            {/* Demo overlay for empty canvas */}
+            {items.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <Card className="w-96 shadow-lg">
+                  <CardContent className="text-center p-8">
+                    <div className="text-6xl mb-4">🎨</div>
+                    <h3 className="text-xl font-semibold mb-2">Canvas is Empty</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Add some items using the toolbar or palette to see the shadcn Canvas in action!
+                    </p>
+                    <Button onClick={addSampleItem}>
+                      Add Sample Item
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
         </Canvas>
       </div>
 

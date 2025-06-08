@@ -673,10 +673,37 @@ function DynamicCanvas({
 
     return (
       <div className={`w-full h-full border-2 rounded-lg p-4 flex flex-col ${colorClasses[color as keyof typeof colorClasses] || colorClasses.yellow}`}>
-        <h3 className="font-semibold text-gray-800 mb-2 flex-shrink-0">{title}</h3>
-        <div className="text-sm text-gray-700 overflow-y-auto flex-1 whitespace-pre-wrap">
-          {content}
-        </div>
+        <input
+          type="text"
+          defaultValue={title}
+          className="font-semibold text-gray-800 mb-2 flex-shrink-0 bg-transparent border-none outline-none resize-none"
+          placeholder="Note title..."
+          onBlur={(e) => {
+            // Update title in items when editing finishes
+            const noteElement = e.target.closest('[data-item-id]')
+            const itemId = noteElement?.getAttribute('data-item-id')
+            if (itemId) {
+              setItems(prev => prev.map(item => 
+                item.id === itemId ? { ...item, title: e.target.value } : item
+              ))
+            }
+          }}
+        />
+        <textarea
+          defaultValue={content}
+          className="text-sm text-gray-700 overflow-y-auto flex-1 bg-transparent border-none outline-none resize-none whitespace-pre-wrap"
+          placeholder="Type your note here..."
+          onBlur={(e) => {
+            // Update content in items when editing finishes
+            const noteElement = e.target.closest('[data-item-id]')
+            const itemId = noteElement?.getAttribute('data-item-id')
+            if (itemId) {
+              setItems(prev => prev.map(item => 
+                item.id === itemId ? { ...item, content: e.target.value } : item
+              ))
+            }
+          }}
+        />
       </div>
     )
   }
@@ -1250,8 +1277,8 @@ function DynamicCanvas({
       'todo-list': {
         title: 'My Tasks',
         items: [
-          { id: '1', text: 'Test the new component', completed: false, createdAt: new Date() },
-          { id: '2', text: 'Add more items', completed: false, createdAt: new Date() }
+          { id: '1', text: 'Test the new component', completed: false, createdAt: new Date('2024-01-01T10:00:00Z') },
+          { id: '2', text: 'Add more items', completed: false, createdAt: new Date('2024-01-01T10:05:00Z') }
         ],
         maxItems: 10
       },
@@ -1268,9 +1295,9 @@ function DynamicCanvas({
       },
       'weather': {
         city: 'New York',
-        temperature: Math.floor(Math.random() * 40 + 40),
-        condition: ['Sunny', 'Cloudy', 'Rainy', 'Snowy'][Math.floor(Math.random() * 4)],
-        humidity: Math.floor(Math.random() * 40 + 40)
+        temperature: 68,
+        condition: 'Cloudy',
+        humidity: 72
       }
     }
 
@@ -2033,9 +2060,9 @@ export default function CanvasDemo() {
           props: {
             title: 'Sprint Tasks',
             items: [
-              { id: '1', text: 'Complete universal component system', completed: true, createdAt: new Date() },
-              { id: '2', text: 'Update documentation', completed: false, createdAt: new Date() },
-              { id: '3', text: 'Add more example components', completed: false, createdAt: new Date() }
+              { id: '1', text: 'Complete universal component system', completed: true, createdAt: new Date('2024-01-01T10:00:00Z') },
+              { id: '2', text: 'Update documentation', completed: false, createdAt: new Date('2024-01-01T10:05:00Z') },
+              { id: '3', text: 'Add more example components', completed: false, createdAt: new Date('2024-01-01T10:10:00Z') }
             ],
             maxItems: 10
           },

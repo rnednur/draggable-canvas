@@ -105,8 +105,11 @@ class ComponentRegistryClass {
       // Create the component with error boundary
       return React.createElement(
         ComponentErrorBoundary,
-        { key, componentType: type },
-        React.createElement(config.component, finalProps)
+        { 
+          key, 
+          componentType: type,
+          children: React.createElement(config.component, finalProps)
+        }
       )
     } catch (error) {
       console.error(`Error creating component "${type}":`, error)
@@ -230,7 +233,4 @@ class ComponentErrorBoundary extends React.Component<
 }
 
 // Export singleton instance
-export const ComponentRegistry = new ComponentRegistryClass()
-
-// Export types for use in other files
-export type { UniversalComponentConfig } 
+export const ComponentRegistry = new ComponentRegistryClass() 

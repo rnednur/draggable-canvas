@@ -149,6 +149,7 @@ export function DraggableItem({
   return (
     <div
       ref={itemRef}
+      data-item-id={id}
       className={`absolute cursor-move select-none transition-shadow duration-200 group ${
         isDragging || isResizing ? "shadow-2xl scale-105 z-50" : "shadow-lg hover:shadow-xl z-10"
       }`}

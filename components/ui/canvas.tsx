@@ -105,6 +105,10 @@ export interface CanvasProps
   onClear?: () => void
   onExport?: () => void
   onAutoFit?: () => void
+  onAutoLayout?: () => void
+  onZoomIn?: () => void
+  onZoomOut?: () => void
+  onZoomReset?: () => void
   onToggleCarousel?: () => void
   onToggleTurnstile?: () => void
   canUndo?: boolean
@@ -123,6 +127,10 @@ export interface CanvasToolbarProps
   onClear?: () => void
   onExport?: () => void
   onAutoFit?: () => void
+  onAutoLayout?: () => void
+  onZoomIn?: () => void
+  onZoomOut?: () => void
+  onZoomReset?: () => void
   onToggleCarousel?: () => void
   onToggleTurnstile?: () => void
   canUndo?: boolean
@@ -155,6 +163,10 @@ const CanvasToolbar = React.forwardRef<HTMLDivElement, CanvasToolbarProps>(
     onClear,
     onExport,
     onAutoFit,
+    onAutoLayout,
+    onZoomIn,
+    onZoomOut,
+    onZoomReset,
     onToggleCarousel,
     onToggleTurnstile,
     canUndo = false,
@@ -281,6 +293,70 @@ const CanvasToolbar = React.forwardRef<HTMLDivElement, CanvasToolbarProps>(
             </TooltipTrigger>
             <TooltipContent>
               <p>Auto-Fit <kbd className="text-xs">Ctrl+F</kbd></p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onAutoLayout}
+                size="sm"
+                variant="outline"
+                className="hover:bg-accent transition-colors"
+              >
+                🧩
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Auto-Layout <kbd className="text-xs">Ctrl+L</kbd></p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onZoomIn}
+                size="sm"
+                variant="outline"
+                className="hover:bg-accent transition-colors"
+              >
+                🔍
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Zoom In <kbd className="text-xs">Ctrl+=</kbd></p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onZoomOut}
+                size="sm"
+                variant="outline"
+                className="hover:bg-accent transition-colors"
+              >
+                🔎
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Zoom Out <kbd className="text-xs">Ctrl+-</kbd></p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onZoomReset}
+                size="sm"
+                variant="outline"
+                className="hover:bg-accent transition-colors"
+              >
+                🔄
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Reset Zoom <kbd className="text-xs">Ctrl+0</kbd></p>
             </TooltipContent>
           </Tooltip>
           
@@ -465,6 +541,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(
     onClear,
     onExport,
     onAutoFit,
+    onAutoLayout,
+    onZoomIn,
+    onZoomOut,
+    onZoomReset,
     onToggleCarousel,
     onToggleTurnstile,
     canUndo = false,
@@ -511,6 +591,10 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(
             onClear={onClear}
             onExport={onExport}
             onAutoFit={onAutoFit}
+            onAutoLayout={onAutoLayout}
+            onZoomIn={onZoomIn}
+            onZoomOut={onZoomOut}
+            onZoomReset={onZoomReset}
             onToggleCarousel={onToggleCarousel}
             onToggleTurnstile={onToggleTurnstile}
             canUndo={canUndo}
