@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { RotateCcw, Plus, Globe, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ComponentRegistry } from "@/lib/component-registry"
 import { UNIVERSAL_COMPONENTS } from "@/components/universal-components"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, CarouselThumbnail, type CarouselApi } from "@/components/ui/carousel"
@@ -1302,155 +1302,217 @@ function DynamicCanvas({
       {editable && (
         <>
           {/* Toolbar */}
-          <div className="fixed top-1/2 right-4 z-50 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2 transform -translate-y-1/2">
-            <Tooltip content="💾 Save Canvas - Saves your current layout to browser storage" shortcut="Ctrl+S" side="left">
-              <Button
-                onClick={saveCanvas}
-                size="sm"
-                variant="outline"
-                className="hover:bg-blue-50 transition-colors"
-                title="💾 Save Canvas (Ctrl+S)"
-              >
-                💾
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="📁 Load Canvas - Restores your previously saved layout" side="left">
-              <Button
-                onClick={loadCanvas}
-                size="sm"
-                variant="outline"
-                className="hover:bg-green-50 transition-colors"
-                title="📁 Load Canvas"
-              >
-                📁
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="↶ Undo - Reverts the last action" shortcut="Ctrl+Z" side="left">
-              <Button
-                onClick={undo}
-                size="sm"
-                variant="outline"
-                disabled={historyIndex <= 0}
-                className="hover:bg-yellow-50 transition-colors disabled:opacity-50"
-                title="↶ Undo (Ctrl+Z)"
-              >
-                ↶
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="↷ Redo - Restores the last undone action" shortcut="Ctrl+Y" side="left">
-              <Button
-                onClick={redo}
-                size="sm"
-                variant="outline"
-                disabled={historyIndex >= history.length - 1}
-                className="hover:bg-yellow-50 transition-colors disabled:opacity-50"
-                title="↷ Redo (Ctrl+Y)"
-              >
-                ↷
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="🎠 Turnstile Mode - Circular layout for overlapping cards" side="left">
-              <Button
-                onClick={toggleTurnstileMode}
-                size="sm"
-                variant={turnstileMode ? "default" : "outline"}
-                className={`transition-colors ${turnstileMode ? 'bg-purple-100 hover:bg-purple-200' : 'hover:bg-purple-50'}`}
-                title="🎠 Turnstile Mode"
-              >
-                🎠
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="🎢 Carousel Mode - Linear navigation through items" side="left">
-              <Button
-                onClick={toggleCarouselMode}
-                size="sm"
-                variant={carouselMode ? "default" : "outline"}
-                className={`transition-colors ${carouselMode ? 'bg-pink-100 hover:bg-pink-200' : 'hover:bg-pink-50'}`}
-                title="🎢 Carousel Mode"
-              >
-                🎢
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="🎯 Auto-Fit - Center view to show all components" shortcut="Ctrl+F" side="left">
-              <Button
-                onClick={autoFitCanvas}
-                size="sm"
-                variant="outline"
-                className="hover:bg-indigo-50 transition-colors"
-                title="🎯 Auto-Fit Canvas (Ctrl+F)"
-              >
-                🎯
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="🔍 Reset Zoom - Return to 100% zoom level" side="left">
-              <Button
-                onClick={resetZoom}
-                size="sm"
-                variant="outline"
-                className="hover:bg-cyan-50 transition-colors"
-                title="🔍 Reset Zoom"
-              >
-                🔍
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="🧩 Auto-Layout - Arrange all items in a structured grid" side="left">
-              <Button
-                onClick={autoLayoutItems}
-                size="sm"
-                variant="outline"
-                className="hover:bg-purple-50 transition-colors"
-                title="🧩 Auto-Layout Grid"
-              >
-                🧩
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="📤 Export Configuration - Downloads your canvas setup as JSON" side="left">
-              <Button
-                onClick={exportConfig}
-                size="sm"
-                variant="outline"
-                className="hover:bg-orange-50 transition-colors"
-                title="📤 Export Configuration"
-              >
-                📤
-              </Button>
-            </Tooltip>
-            
-            <Tooltip content="🗑️ Clear Canvas - Removes all items (with confirmation)" side="left">
-              <Button
-                onClick={clearCanvas}
-                size="sm"
-                variant="outline"
-                className="hover:bg-red-50 transition-colors"
-                title="🗑️ Clear Canvas"
-              >
-                🗑️
-              </Button>
-            </Tooltip>
-
-            {showPalette && (
-              <Tooltip content="🎨 Component Palette - Add new components to the canvas" side="left">
-                <Button
-                  onClick={() => setPaletteOpen(!paletteOpen)}
-                  size="sm"
-                  variant={paletteOpen ? "default" : "outline"}
-                  className={`transition-colors ${paletteOpen ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-green-50'}`}
-                  title="🎨 Component Palette"
-                >
-                  🎨
-                </Button>
+          <TooltipProvider>
+            <div className="fixed top-1/2 right-4 z-50 bg-white rounded-lg shadow-lg p-2 flex flex-col gap-2 transform -translate-y-1/2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={saveCanvas}
+                    size="sm"
+                    variant="outline"
+                    className="hover:bg-blue-50 transition-colors"
+                    title="💾 Save Canvas (Ctrl+S)"
+                  >
+                    💾
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>💾 Save Canvas - Saves your current layout to browser storage <kbd className="text-xs">Ctrl+S</kbd></p>
+                </TooltipContent>
               </Tooltip>
-            )}
-          </div>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={loadCanvas}
+                    size="sm"
+                    variant="outline"
+                    className="hover:bg-green-50 transition-colors"
+                    title="📁 Load Canvas"
+                  >
+                    📁
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>📁 Load Canvas - Restores your previously saved layout</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={undo}
+                    size="sm"
+                    variant="outline"
+                    disabled={historyIndex <= 0}
+                    className="hover:bg-yellow-50 transition-colors disabled:opacity-50"
+                    title="↶ Undo (Ctrl+Z)"
+                  >
+                    ↶
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>↶ Undo - Reverts the last action <kbd className="text-xs">Ctrl+Z</kbd></p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={redo}
+                    size="sm"
+                    variant="outline"
+                    disabled={historyIndex >= history.length - 1}
+                    className="hover:bg-yellow-50 transition-colors disabled:opacity-50"
+                    title="↷ Redo (Ctrl+Y)"
+                  >
+                    ↷
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>↷ Redo - Restores the last undone action <kbd className="text-xs">Ctrl+Y</kbd></p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={toggleTurnstileMode}
+                    size="sm"
+                    variant={turnstileMode ? "default" : "outline"}
+                    className={`transition-colors ${turnstileMode ? 'bg-purple-100 hover:bg-purple-200' : 'hover:bg-purple-50'}`}
+                    title="🎠 Turnstile Mode"
+                  >
+                    🎠
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>🎠 Turnstile Mode - Circular layout for overlapping cards</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={toggleCarouselMode}
+                    size="sm"
+                    variant={carouselMode ? "default" : "outline"}
+                    className={`transition-colors ${carouselMode ? 'bg-pink-100 hover:bg-pink-200' : 'hover:bg-pink-50'}`}
+                    title="🎢 Carousel Mode"
+                  >
+                    🎢
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>🎢 Carousel Mode - Linear navigation through items</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={autoFitCanvas}
+                    size="sm"
+                    variant="outline"
+                    className="hover:bg-indigo-50 transition-colors"
+                    title="🎯 Auto-Fit Canvas (Ctrl+F)"
+                  >
+                    🎯
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>🎯 Auto-Fit - Center view to show all components <kbd className="text-xs">Ctrl+F</kbd></p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={resetZoom}
+                    size="sm"
+                    variant="outline"
+                    className="hover:bg-cyan-50 transition-colors"
+                    title="🔍 Reset Zoom"
+                  >
+                    🔍
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>🔍 Reset Zoom - Return to 100% zoom level</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={autoLayoutItems}
+                    size="sm"
+                    variant="outline"
+                    className="hover:bg-purple-50 transition-colors"
+                    title="🧩 Auto-Layout Grid"
+                  >
+                    🧩
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>🧩 Auto-Layout - Arrange all items in a structured grid</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={exportConfig}
+                    size="sm"
+                    variant="outline"
+                    className="hover:bg-orange-50 transition-colors"
+                    title="📤 Export Configuration"
+                  >
+                    📤
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>📤 Export Configuration - Downloads your canvas setup as JSON</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={clearCanvas}
+                    size="sm"
+                    variant="outline"
+                    className="hover:bg-red-50 transition-colors"
+                    title="🗑️ Clear Canvas"
+                  >
+                    🗑️
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>🗑️ Clear Canvas - Removes all items (with confirmation)</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {showPalette && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setPaletteOpen(!paletteOpen)}
+                      size="sm"
+                      variant={paletteOpen ? "default" : "outline"}
+                      className={`transition-colors ${paletteOpen ? 'bg-green-100 hover:bg-green-200' : 'hover:bg-green-50'}`}
+                      title="🎨 Component Palette"
+                    >
+                      🎨
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    <p>🎨 Component Palette - Add new components to the canvas</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </TooltipProvider>
 
           {/* Component Palette */}
           {showPalette && paletteOpen && (
@@ -1545,46 +1607,61 @@ function DynamicCanvas({
           )}
 
           {/* Instructions */}
-          <div className="fixed top-4 right-4 z-50">
-            <Tooltip content="❓ Help & Instructions - Shows keyboard shortcuts and usage tips" side="left">
-              <Button
-                onClick={() => setInstructionsOpen(!instructionsOpen)}
-                className="rounded-full w-12 h-12 shadow-lg mb-2 hover:bg-blue-50 transition-colors"
-                variant={instructionsOpen ? "default" : "outline"}
-              >
-                {instructionsOpen ? "✕" : "❓"}
-              </Button>
-            </Tooltip>
+          <TooltipProvider>
+            <div className="fixed top-4 right-4 z-50">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => setInstructionsOpen(!instructionsOpen)}
+                    className="rounded-full w-12 h-12 shadow-lg mb-2 hover:bg-blue-50 transition-colors"
+                    variant={instructionsOpen ? "default" : "outline"}
+                  >
+                    {instructionsOpen ? "✕" : "❓"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p>❓ Help & Instructions - Shows keyboard shortcuts and usage tips</p>
+                </TooltipContent>
+              </Tooltip>
 
-            {instructionsOpen && (
-              <div className="bg-white rounded-lg shadow-lg p-4 border max-w-xs">
-                <h3 className="font-semibold text-sm text-gray-700 mb-2">How to Use</h3>
-                <ul className="text-xs text-gray-600 space-y-1">
-                  <li>• Drag components to move them</li>
-                  <li>• Drag bottom-right corner to resize</li>
-                  <li>• Hover over items to see controls</li>
-                  <li>• 🎨 Component palette to add new items</li>
-                  <li>• 🎠 Turnstile mode for overlapping cards</li>
-                  <li>• Click cards in turnstile to focus</li>
-                  <li>• 🎢 Enhanced carousel with Embla</li>
-                  <li>• Arrow keys/swipe to navigate carousel</li>
-                  <li>• Number keys (1-9) jump to slides</li>
-                  <li>• Ctrl+Space: toggle autoplay</li>
-                  <li>• Ctrl+T: toggle thumbnails</li>
-                  <li>• Escape: exit carousel mode</li>
-                  <li>• 🎯 Auto-fit zooms to show all</li>
-                  <li>• 🔍 Reset zoom to return to 100%</li>
-                  <li>• 🧩 Auto-layout to arrange in grid</li>
-                  <li>• Scroll to navigate large canvases</li>
-                  <li>• Ctrl+S to save, Ctrl+Z to undo</li>
-                  <li>• Ctrl+Shift+C: carousel mode</li>
-                  <li>• Ctrl+Shift+T: turnstile mode</li>
-                  <li>• Delete key to remove selected items</li>
-                  <li>• Pass config prop for data-driven content</li>
-                </ul>
-              </div>
-            )}
-          </div>
+              {instructionsOpen && (
+                <div className="bg-white rounded-lg shadow-lg p-4 border max-w-xs">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-sm text-gray-700">How to Use</h3>
+                    <a 
+                      href="/shadcn-demo" 
+                      className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
+                    >
+                      Try shadcn Version
+                    </a>
+                  </div>
+                  <ul className="text-xs text-gray-600 space-y-1">
+                    <li>• Drag components to move them</li>
+                    <li>• Drag bottom-right corner to resize</li>
+                    <li>• Hover over items to see controls</li>
+                    <li>• 🎨 Component palette to add new items</li>
+                    <li>• 🎠 Turnstile mode for overlapping cards</li>
+                    <li>• Click cards in turnstile to focus</li>
+                    <li>• 🎢 Enhanced carousel with Embla</li>
+                    <li>• Arrow keys/swipe to navigate carousel</li>
+                    <li>• Number keys (1-9) jump to slides</li>
+                    <li>• Ctrl+Space: toggle autoplay</li>
+                    <li>• Ctrl+T: toggle thumbnails</li>
+                    <li>• Escape: exit carousel mode</li>
+                    <li>• 🎯 Auto-fit zooms to show all</li>
+                    <li>• 🔍 Reset zoom to return to 100%</li>
+                    <li>• 🧩 Auto-layout to arrange in grid</li>
+                    <li>• Scroll to navigate large canvases</li>
+                    <li>• Ctrl+S to save, Ctrl+Z to undo</li>
+                    <li>• Ctrl+Shift+C: carousel mode</li>
+                    <li>• Ctrl+Shift+T: turnstile mode</li>
+                    <li>• Delete key to remove selected items</li>
+                    <li>• Pass config prop for data-driven content</li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          </TooltipProvider>
         </>
       )}
 

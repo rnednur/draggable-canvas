@@ -1,10 +1,8 @@
 # Draggable Canvas - Interactive Dashboard Builder
 
-A powerful, data-driven canvas component for creating interactive dashboards with draggable, resizable components.
+A powerful, data-driven canvas component for creating interactive dashboards with draggable, resizable components. Available in both original and shadcn/ui-compatible versions.
 
 ## 🎨 Visual Showcase
-
-
 
 ### Auto-Layout Feature
 ![Auto Layout](images/auto-layout.png)
@@ -21,7 +19,6 @@ A powerful, data-driven canvas component for creating interactive dashboards wit
 ### Carousel Mode  
 ![Carousel Mode](images/carousel-mode.png)
 *🎢 Carousel mode provides linear navigation through your components with smooth transitions.*
-
 
 ## 🚀 Features
 
@@ -40,6 +37,8 @@ A powerful, data-driven canvas component for creating interactive dashboards wit
 - **Rich Notes**: Colored sticky notes with text content
 - **Live Websites**: Embed and interact with external websites
 - **Turnstile Mode**: Circular arrangement for managing overlapping cards
+- **Carousel Mode**: Linear slideshow navigation through components
+- **Auto-fit & Auto-layout**: Smart organization and viewport optimization
 - **Enhanced Tooltips**: Informative hover tooltips with keyboard shortcuts
 
 ## 🚀 Getting Started
@@ -62,9 +61,29 @@ A powerful, data-driven canvas component for creating interactive dashboards wit
    ```
 
 4. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+   - Original Demo: [http://localhost:3000](http://localhost:3000)
+   - shadcn Demo: [http://localhost:3000/shadcn-demo](http://localhost:3000/shadcn-demo)
 
-## 📚 How to Use
+## 📋 Component Versions
+
+This project provides two versions of the canvas component:
+
+### 🔄 Original Dynamic Canvas
+- Located in `app/page.tsx`
+- Monolithic component with all functionality included
+- Perfect for quick prototyping and standalone use
+- All features work out of the box
+
+### 🎨 shadcn/ui Compatible Canvas  
+- Located in `components/ui/canvas.tsx`
+- Follows shadcn/ui patterns and conventions
+- Composable architecture with separate components
+- Better for design systems and component libraries
+- Consistent theming and dark mode support
+
+## 📚 Usage Guide
+
+# Original Dynamic Canvas
 
 ### Method 1: Run the Demo Application
 
@@ -80,7 +99,7 @@ This will show you a full-featured dashboard with:
 - Live website embeds
 - All interactive features working
 
-### Method 2: Use as a Component Library
+### Method 2: Use as a Component
 
 #### Basic Integration
 
@@ -145,143 +164,171 @@ function MyDashboard() {
 }
 ```
 
-### Method 3: Customize and Build Your Own
+# shadcn/ui Compatible Canvas
 
-#### Step 1: Create Your Data
+### Installation
 
-```javascript
-// data/dashboard-config.js
-export const myDashboardConfig = {
-  charts: [
-    // Bar Chart Example
-    {
-      type: "bar",
-      title: "Revenue by Quarter",
-      data: {
-        values: [25000, 32000, 28000, 35000],
-        labels: ["Q1", "Q2", "Q3", "Q4"]
-      },
-      x: 50,
-      y: 50,
-      width: 350,
-      height: 250
-    },
-    
-    // Line Chart Example
-    {
-      type: "line", 
-      title: "User Growth",
-      data: {
-        values: [100, 150, 120, 280, 350, 400],
-        labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
-      },
-      x: 450,
-      y: 50,
-      width: 350,
-      height: 250
-    },
-    
-    // Pie Chart Example
-    {
-      type: "pie",
-      title: "Market Share",
-      data: {
-        values: [35, 25, 20, 15, 5],
-        labels: ["Product A", "Product B", "Product C", "Product D", "Others"]
-      },
-      x: 50,
-      y: 350,
-      width: 300,
-      height: 300
-    },
-    
-    // Metrics Dashboard
-    {
-      type: "metrics",
-      title: "Key Performance Indicators",
-      data: {
-        metrics: [
-          { label: "Total Users", value: "12,345" },
-          { label: "Revenue", value: "$125.6K" },
-          { label: "Conversion Rate", value: "3.2%" },
-          { label: "Active Sessions", value: "1,892" }
-        ]
-      },
-      x: 450,
-      y: 350,
-      width: 350,
-      height: 200
-    }
-  ],
-  
-  notes: [
-    {
-      title: "Project Goals",
-      content: "1. Increase user engagement by 25%\n2. Launch new feature by Q2\n3. Improve conversion rate",
-      color: "blue",
-      x: 850,
-      y: 50,
-      width: 300,
-      height: 250
-    },
-    {
-      title: "Team Meeting Notes",
-      content: "Discussed quarterly targets and resource allocation for upcoming projects.",
-      color: "green", 
-      x: 850,
-      y: 350,
-      width: 300,
-      height: 200
-    }
-  ],
-  
-  urls: [
-    {
-      url: "https://analytics.google.com",
-      title: "Google Analytics",
-      x: 50,
-      y: 700,
-      width: 500,
-      height: 350
-    },
-    {
-      url: "https://github.com/your-repo",
-      title: "Project Repository", 
-      x: 600,
-      y: 700,
-      width: 500,
-      height: 350
-    }
-  ]
+#### 1. Add Required Dependencies
+
+```bash
+npm install @radix-ui/react-tooltip class-variance-authority
+```
+
+#### 2. Install shadcn Components
+
+```bash
+npx shadcn-ui@latest add button input badge card tooltip
+```
+
+#### 3. Use the Canvas Component
+
+The canvas component is already included in `components/ui/canvas.tsx`.
+
+### Basic Usage
+
+```tsx
+import { Canvas } from "@/components/ui/canvas"
+
+export function MyCanvas() {
+  return (
+    <Canvas variant="grid" size="full">
+      {/* Your draggable items go here */}
+    </Canvas>
+  )
 }
 ```
 
-#### Step 2: Create Your Dashboard Component
+### Advanced Usage with Handlers
 
 ```tsx
-// components/MyDashboard.tsx
-import { DynamicCanvas } from '../app/page'
-import { myDashboardConfig } from '../data/dashboard-config'
+import { Canvas } from "@/components/ui/canvas"
 
-export default function MyDashboard() {
-  const handleItemsChange = (items) => {
-    console.log('Canvas items changed:', items)
-    // Save to database, localStorage, etc.
+export function AdvancedCanvas() {
+  const handleSave = (config) => {
+    console.log('Saving config:', config)
+  }
+
+  const handleAddChart = (type) => {
+    console.log('Adding chart:', type)
+  }
+
+  const handleAddNote = (color) => {
+    console.log('Adding note:', color)
   }
 
   return (
-    <div className="w-full h-screen">
-      <header className="bg-gray-100 p-4 border-b">
-        <h1 className="text-2xl font-bold">My Business Dashboard</h1>
-      </header>
+    <Canvas 
+      variant="grid"
+      size="full"
+      showToolbar={true}
+      showPalette={true}
+      toolbarPosition="top-right"
+      palettePosition="left"
+      onSave={handleSave}
+      onAddChart={handleAddChart}
+      onAddNote={handleAddNote}
+      className="border-2 border-dashed"
+    />
+  )
+}
+```
+
+### Using Individual Components
+
+```tsx
+import { 
+  Canvas, 
+  CanvasToolbar, 
+  CanvasPalette 
+} from "@/components/ui/canvas"
+
+export function CustomCanvas() {
+  return (
+    <div className="relative">
+      <Canvas variant="minimal" showToolbar={false} showPalette={false}>
+        {/* Content */}
+      </Canvas>
       
-      <DynamicCanvas 
-        config={myDashboardConfig}
-        editable={true}
-        onItemsChange={handleItemsChange}
+      {/* Custom positioned toolbar */}
+      <CanvasToolbar 
+        position="top-center"
+        onSave={() => {}}
+        onLoad={() => {}}
+      />
+      
+      {/* Custom palette */}
+      <CanvasPalette 
+        position="bottom"
+        isOpen={true}
+        onAddChart={(type) => console.log('Add chart:', type)}
       />
     </div>
   )
+}
+```
+
+### shadcn Canvas Variants
+
+#### Canvas Variants
+
+```tsx
+// Default gradient background
+<Canvas variant="default" />
+
+// Minimal clean background  
+<Canvas variant="minimal" />
+
+// Dark theme
+<Canvas variant="dark" />
+
+// Grid background
+<Canvas variant="grid" />
+```
+
+#### Sizes
+
+```tsx
+// Full screen height
+<Canvas size="full" />
+
+// Minimum screen height with scroll
+<Canvas size="default" />
+
+// Compact 600px height
+<Canvas size="compact" />
+```
+
+#### Toolbar Positions
+
+```tsx
+<Canvas toolbarPosition="top-right" />
+<Canvas toolbarPosition="top-left" />
+<Canvas toolbarPosition="bottom-right" />
+<Canvas toolbarPosition="bottom-left" />
+<Canvas toolbarPosition="top-center" />
+<Canvas toolbarPosition="right-center" />
+```
+
+### Theming
+
+The shadcn canvas respects your shadcn/ui theme configuration:
+
+```css
+/* In your CSS variables */
+:root {
+  --background: 0 0% 100%;
+  --card: 0 0% 100%;
+  --border: 214.3 31.8% 91.4%;
+  --muted: 210 40% 98%;
+  /* ... other variables */
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --card: 222.2 84% 4.9%;
+  --border: 217.2 32.6% 17.5%;
+  --muted: 217.2 32.6% 17.5%;
+  /* ... other variables */
 }
 ```
 
@@ -292,6 +339,10 @@ export default function MyDashboard() {
 - `Ctrl/Cmd + Z` - Undo last action
 - `Ctrl/Cmd + Y` - Redo last undone action  
 - `Delete` - Remove selected items
+- `Ctrl/Cmd + F` - Auto-fit all items in viewport
+- `Ctrl/Cmd + Shift + C` - Toggle Carousel mode
+- `Ctrl/Cmd + Shift + T` - Toggle Turnstile mode
+- `Arrow Keys` - Navigate carousel (when in Carousel mode)
 
 ### Mouse Controls
 - **Drag**: Click and drag any component to move it
@@ -307,13 +358,18 @@ export default function MyDashboard() {
 | 📁 | Load Canvas | Loads previously saved layout |
 | ↶ | Undo | Undo last change |
 | ↷ | Redo | Redo last undone change |
+| 🎯 | Auto-fit | Scale and center to show all items |
+| 🧩 | Auto-layout | Arrange items in structured grid |
 | 🎠 | Turnstile Mode | Arrange items in a circle for easy viewing |
+| 🎢 | Carousel Mode | Linear slideshow navigation |
 | 📤 | Export Config | Download canvas configuration as JSON |
 | 🗑️ | Clear Canvas | Remove all items from canvas |
 
-## 📊 Chart Configuration Guide
+## 📊 Data Configuration Guide
 
-### Bar Charts
+### Chart Configuration
+
+#### Bar Charts
 Perfect for comparing values across categories:
 
 ```javascript
@@ -331,7 +387,7 @@ Perfect for comparing values across categories:
 }
 ```
 
-### Line Charts
+#### Line Charts
 Great for showing trends over time:
 
 ```javascript
@@ -349,7 +405,7 @@ Great for showing trends over time:
 }
 ```
 
-### Pie/Donut Charts
+#### Pie/Donut Charts
 Ideal for showing proportions:
 
 ```javascript
@@ -367,7 +423,7 @@ Ideal for showing proportions:
 }
 ```
 
-### Metrics Dashboard
+#### Metrics Dashboard
 Display key performance indicators:
 
 ```javascript
@@ -389,7 +445,7 @@ Display key performance indicators:
 }
 ```
 
-## 📝 Notes Configuration
+### Notes Configuration
 
 Create sticky notes with different colors and content:
 
@@ -405,14 +461,14 @@ Create sticky notes with different colors and content:
 }
 ```
 
-### Available Colors
+#### Available Colors
 - **yellow**: Classic sticky note color
 - **blue**: Professional, calming
 - **green**: Success, positive notes  
 - **pink**: Important, attention-grabbing
 - **purple**: Creative, brainstorming
 
-## 🌐 Website Embedding
+### Website Embedding
 
 Embed live, interactive websites directly in your dashboard:
 
@@ -426,3 +482,119 @@ Embed live, interactive websites directly in your dashboard:
   height: 400
 }
 ```
+
+## 🔄 Migration Guide
+
+### From Original to shadcn Canvas
+
+If you're migrating from the original `DynamicCanvas` to the shadcn version:
+
+1. **Replace imports:**
+   ```tsx
+   // Old
+   import { DynamicCanvas } from "@/app/page"
+   
+   // New
+   import { Canvas } from "@/components/ui/canvas"
+   ```
+
+2. **Update props:**
+   ```tsx
+   // Old
+   <DynamicCanvas config={config} editable={true} showPalette={true} />
+   
+   // New
+   <Canvas config={config} editable={true} showPalette={true} variant="grid" />
+   ```
+
+3. **Add event handlers:**
+   ```tsx
+   // shadcn version requires explicit handlers
+   <Canvas 
+     onSave={handleSave}
+     onLoad={handleLoad}
+     onAddChart={handleAddChart}
+     onAddNote={handleAddNote}
+     onUndo={handleUndo}
+     onRedo={handleRedo}
+   />
+   ```
+
+## 🌟 Publishing as shadcn Component
+
+To make the shadcn canvas available as an installable component:
+
+### Component Registry Entry
+
+```json
+{
+  "name": "canvas",
+  "dependencies": [
+    "@radix-ui/react-tooltip",
+    "class-variance-authority"
+  ],
+  "registryDependencies": [
+    "button",
+    "input", 
+    "badge",
+    "card",
+    "tooltip"
+  ],
+  "files": ["ui/canvas.tsx"],
+  "type": "components:ui"
+}
+```
+
+### Installation Command
+
+```bash
+npx shadcn-ui@latest add canvas
+```
+
+## 🎯 Choosing the Right Version
+
+### Use Original Dynamic Canvas When:
+- ✅ You want everything to work out of the box
+- ✅ You need rapid prototyping
+- ✅ You're building a standalone dashboard
+- ✅ You don't need extensive theming customization
+
+### Use shadcn Canvas When:
+- ✅ You're building a design system
+- ✅ You need consistent theming across components
+- ✅ You want composable, reusable components
+- ✅ You're contributing to open source libraries
+- ✅ You need TypeScript-first development experience
+
+## 📈 Benefits Comparison
+
+| Feature | Original Canvas | shadcn Canvas |
+|---------|----------------|---------------|
+| Setup Time | ⚡ Instant | 🔧 Requires setup |
+| Customization | 🎨 Limited | 🎨🎨🎨 Extensive |
+| Theme Support | 🌓 Basic | 🌓🌓 Advanced |
+| Type Safety | ✅ Good | ✅✅ Excellent |
+| Reusability | 📦 Moderate | 📦📦 High |
+| Community | 👥 Project-specific | 👥👥 shadcn ecosystem |
+
+## 🚀 Contributing
+
+We welcome contributions to both versions of the canvas component! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Next.js](https://nextjs.org/)
+- UI components from [shadcn/ui](https://ui.shadcn.com/)
+- Charts powered by [Recharts](https://recharts.org/)
+- Drag and drop with [react-draggable](https://github.com/react-grid-layout/react-draggable)
+- Resizing with [react-resizable-box](https://github.com/bokuweb/react-resizable-box)
